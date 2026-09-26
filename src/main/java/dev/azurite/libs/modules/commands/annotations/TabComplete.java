@@ -16,5 +16,8 @@ public @interface TabComplete {
 
     String command();
 
+    boolean autoSubCommands();
+
+    boolean autoMatch();
 
 }

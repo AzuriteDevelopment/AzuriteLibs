@@ -31,6 +31,10 @@ public class SpigotCommand extends BukkitCommand {
 
     @Override
     public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) throws IllegalArgumentException {
+        List<String> completions = command.tabComplete(sender, args);
+        if (completions != null) {
+            return completions;
+        }
         return super.tabComplete(sender, alias, args);
     }
 }

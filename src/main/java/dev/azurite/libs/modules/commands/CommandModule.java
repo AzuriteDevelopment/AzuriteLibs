@@ -13,6 +13,7 @@ import lombok.Setter;
 
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * Copyright (c) 2026. Keano
@@ -36,7 +37,7 @@ public class CommandModule extends Module<AzuriteLibs> {
         this.onlyConsoleMessage = "Only console can use this command";
     }
 
-    public void unregisterCommands() {
+    public void unregisterAllCommands() {
         for (Command command : commands.values()) {
             command.unregister();
         }
@@ -65,66 +66,71 @@ public class CommandModule extends Module<AzuriteLibs> {
 
     public void registerCommand(String prefix, CommandClass commandClass) {
         List<Method> methods = this.findMethods(commandClass);
-        Iterator<Method> iterator = methods.iterator();
+        List<Command> registering = new ArrayList<>();
 
         // Load main commands and remove since we process sub commands after
-        while (iterator.hasNext()) {
+        iterate(methods, iterator -> {
             Method method = iterator.next();
             AzuriteCommand annotation = method.getAnnotation(AzuriteCommand.class);
 
             if (annotation != null) {
                 Command command = new Command(this, annotation, method, prefix, commandClass);
+                registering.add(command);
                 commands.put(annotation.name(), command);
                 iterator.remove();
             }
-        }
+        });
 
         // Load sub commands
-        iterator = methods.iterator();
-
-        while (iterator.hasNext()) {
+        iterate(methods, iterator -> {
             Method method = iterator.next();
             AzuriteSubCommand annotation = method.getAnnotation(AzuriteSubCommand.class);
 
             if (annotation != null) {
                 Command command = commands.get(annotation.mainCommand());
-
-                if (command == null) {
-                    throw new RuntimeException("Cannot add sub command when main command does not exist.");
-                }
-
                 command.getSubCommands().add(new SubCommand(this, annotation, method));
                 iterator.remove();
             }
-        }
+        });
 
         // Load tab completes
-        iterator = methods.iterator();
-
-        while (iterator.hasNext()) {
+        iterate(methods, iterator -> {
             Method method = iterator.next();
             TabComplete tabComplete = method.getAnnotation(TabComplete.class);
 
             if (tabComplete != null) {
                 Command command = commands.get(tabComplete.command());
-
-                if (command == null) {
-                    throw new RuntimeException("Cannot add sub command when main command does not exist.");
-                }
-
-
+                command.setTabComplete(method);
+                command.setAutoMatchTab(tabComplete.autoMatch());
+                command.setSubCommandsTab(tabComplete.autoSubCommands());
+                iterator.remove();
             }
-        }
+        });
 
         // Register all commands
-        for (Command command : commands.values()) {
+        for (Command command : registering) {
             command.register();
+        }
+    }
+
+    private void iterate(List<Method> methods, Consumer<Iterator<Method>> consumer) {
+        Iterator<Method> iterator = methods.iterator();
+
+        while (iterator.hasNext()) {
+            consumer.accept(iterator);
         }
     }
 
     private List<Method> findMethods(CommandClass commandClass) {
         List<Method> methods = new ArrayList<>(Arrays.asList(commandClass.getClass().getMethods()));
-        methods.removeIf(method -> !method.isAnnotationPresent(AzuriteCommand.class) && !method.isAnnotationPresent(AzuriteSubCommand.class));
+
+        methods.removeIf(method -> {
+            if (method.isAnnotationPresent(AzuriteCommand.class) || method.isAnnotationPresent(AzuriteSubCommand.class)) {
+                return false;
+            }
+            return !method.isAnnotationPresent(TabComplete.class);
+        });
+
         methods.sort(new MethodComparator());
         return methods;
     }

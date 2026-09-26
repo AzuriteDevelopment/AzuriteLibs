@@ -9,13 +9,13 @@ import dev.azurite.libs.modules.commands.utils.CommandUtils;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Copyright (c) 2026. Keano
@@ -47,16 +47,13 @@ public class Command extends BaseCommand {
     }
 
     public void register() {
-        if (bukkitCommand == null) {
-            this.bukkitCommand = new SpigotCommand(this);
-        }
-        CommandMap commandMap = CommandUtils.getCommandMap();
-        commandMap.register(prefix, bukkitCommand);
+        if (bukkitCommand == null) this.bukkitCommand = new SpigotCommand(this);
+        CommandUtils.register(prefix, bukkitCommand);
     }
 
     public void unregister() {
-        CommandUtils.clearCommand(name);
         this.bukkitCommand = null;
+        CommandUtils.unregister(name);
     }
 
     public void execute(CommandSender sender, String[] args) {
@@ -74,11 +71,28 @@ public class Command extends BaseCommand {
     }
 
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (args.length > 0) {
-            SubCommand subCommand = this.getSubCommand(args[0]);
-
+        if (isInsufficientPermission(sender, false)) {
+            return null;
         }
 
+        List<String> completion = this.invokeExecutionTabComplete(commandClass, sender, args);
+
+        if (!subCommands.isEmpty() && args.length == 1 && subCommandsTab) {
+            completion = new ArrayList<>();
+
+            for (SubCommand subCommand : subCommands) {
+                if (subCommand.isInsufficientPermission(sender, false)) continue;
+                completion.addAll(Arrays.asList(subCommand.getNames()));
+            }
+        }
+
+        if (completion != null && !completion.isEmpty()) {
+            String string = args[args.length - 1];
+            return completion
+                    .stream()
+                    .filter(s -> !autoMatchTab || s.regionMatches(true, 0, string, 0, string.length()))
+                    .collect(Collectors.toList());
+        }
         return null;
     }
 
