@@ -30,6 +30,7 @@ public class BaseCommand extends SubModule<AzuriteLibs, CommandModule> {
     protected Method tabComplete;
     protected String permission;
     protected Sender sender;
+
     protected boolean async;
     protected boolean autoMatchTab;
     protected boolean subCommandsTab;
@@ -42,33 +43,19 @@ public class BaseCommand extends SubModule<AzuriteLibs, CommandModule> {
         this.async = async;
     }
 
-    public boolean isInsufficientPermission(CommandSender sender, boolean sendMessage) {
+    public boolean cannotUseCommand(CommandSender sender, boolean sendMessage) {
         if (!permission.isEmpty() && !sender.hasPermission(permission)) {
             if (sendMessage) sender.sendMessage(module.getNoPermissionMessage());
             return true;
         }
-        return false;
-    }
 
-    public boolean isInvalid(CommandSender sender, boolean sendMessage) {
         Class<?> validType = this.sender.getValidType();
-        boolean valid = validType == null || validType.isInstance(sender);
 
-        if (sendMessage && !valid) {
-            sender.sendMessage(CC.t(this.sender.getNotValidMessage().apply(module)));
+        if (validType != null && !validType.isInstance(sender)) {
+            if (sendMessage) sender.sendMessage(CC.t(this.sender.getNotValidMessage().apply(module)));
+            return true;
         }
-        return !valid;
-    }
-
-    public List<String> invokeExecutionTabComplete(CommandClass commandClass, CommandSender sender, String[] args) {
-        if (tabComplete == null) {
-            return null;
-        }
-        try {
-            return (List<String>) tabComplete.invoke(commandClass, sender, args);
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+        return false;
     }
 
     public void invokeExecution(CommandClass commandClass, CommandSender sender, String[] args) {
@@ -88,6 +75,17 @@ public class BaseCommand extends SubModule<AzuriteLibs, CommandModule> {
                     method.invoke(commandClass, sender, args);
                     break;
             }
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<String> invokeExecutionTabComplete(CommandClass commandClass, CommandSender sender, String[] args) {
+        if (tabComplete == null) {
+            return null;
+        }
+        try {
+            return (List<String>) tabComplete.invoke(commandClass, sender, args);
         } catch (InvocationTargetException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }

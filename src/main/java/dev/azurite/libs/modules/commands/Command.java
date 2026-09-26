@@ -57,11 +57,14 @@ public class Command extends BaseCommand {
     }
 
     public void execute(CommandSender sender, String[] args) {
+        if (cannotUseCommand(sender, true)) return;
+
         if (args.length > 0) {
             SubCommand subCommand = this.getSubCommand(args[0]);
 
             if (subCommand != null) {
                 String[] subArgs = Arrays.copyOfRange(args, 1, args.length);
+                if (subCommand.cannotUseCommand(sender, true)) return;
                 this.handleInvoke(subCommand, sender, subArgs);
                 return;
             }
@@ -71,7 +74,7 @@ public class Command extends BaseCommand {
     }
 
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        if (isInsufficientPermission(sender, false)) {
+        if (cannotUseCommand(sender, false)) {
             return null;
         }
 
@@ -81,7 +84,7 @@ public class Command extends BaseCommand {
             completion = new ArrayList<>();
 
             for (SubCommand subCommand : subCommands) {
-                if (subCommand.isInsufficientPermission(sender, false)) continue;
+                if (subCommand.cannotUseCommand(sender, false)) continue;
                 completion.addAll(Arrays.asList(subCommand.getNames()));
             }
         }
@@ -97,12 +100,6 @@ public class Command extends BaseCommand {
     }
 
     private void handleInvoke(BaseCommand command, CommandSender sender, String[] args) {
-        if (command.isInsufficientPermission(sender, true)) {
-            return;
-        }
-        if (command.isInvalid(sender, true)) {
-            return;
-        }
         if (command.isAsync()) {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> command.invokeExecution(commandClass, sender, args));
             return;
@@ -110,7 +107,7 @@ public class Command extends BaseCommand {
         command.invokeExecution(commandClass, sender, args);
     }
 
-    public SubCommand getSubCommand(String name) {
+    private SubCommand getSubCommand(String name) {
         for (SubCommand subCommand : subCommands) {
             for (String subCommandName : subCommand.getNames()) {
                 if (subCommandName.equalsIgnoreCase(name)) return subCommand;
