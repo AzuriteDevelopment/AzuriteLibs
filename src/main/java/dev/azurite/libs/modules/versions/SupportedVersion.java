@@ -9,24 +9,27 @@ import org.bukkit.Bukkit;
  */
 public enum SupportedVersion {
 
-    V1_7_10,
     V1_8_8,
     V26_2;
 
     public boolean isLegacy() {
-        return this == V1_7_10 || this == V1_8_8;
+        return this == V1_8_8;
     }
 
     public boolean isModern() {
         return !isLegacy();
     }
 
+    public String getVersionString() {
+        return name().replace("_", ".");
+    }
+
     public static SupportedVersion getSupportedVersion() {
         try {
             String[] split = Bukkit.getVersion().split("-");
-            return SupportedVersion.valueOf(split[0].replace(".", "_"));
+            return SupportedVersion.valueOf("V" + split[0].replace(".", "_"));
         } catch (IllegalArgumentException e) {
-            return null;
+            throw new RuntimeException("This version is not supported.");
         }
     }
 }

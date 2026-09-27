@@ -23,7 +23,7 @@ public class CC {
     static {
         SupportedVersion supportedVersion = SupportedVersion.getSupportedVersion();
 
-        if (supportedVersion == null || supportedVersion.isLegacy()) {
+        if (supportedVersion.isLegacy()) {
             REPLACER = s -> ChatColor.translateAlternateColorCodes('&', s);
 
         } else {
