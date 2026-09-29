@@ -19,5 +19,21 @@ public class TablistModule extends Module<AzuriteLibs> {
 
     public TablistModule(AzuriteLibs azuriteLibs) {
         super(azuriteLibs);
+        this.adapter = new TablistAdapter() {
+            @Override
+            public String[] getHeader() {
+                return new String[0];
+            }
+
+            @Override
+            public String[] getFooter() {
+                return new String[0];
+            }
+
+            @Override
+            public void updateEntries(Tablist tablist) {
+
+            }
+        };
     }
 }

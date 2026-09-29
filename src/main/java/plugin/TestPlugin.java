@@ -13,7 +13,7 @@ public class TestPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        Bukkit.getPluginManager().registerEvents(new TestListener(), this);
+        Bukkit.getPluginManager().registerEvents(new TestListener(this), this);
     }
 
     @Override

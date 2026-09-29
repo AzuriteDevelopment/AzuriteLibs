@@ -1,12 +1,13 @@
 package plugin.listener;
 
-import dev.azurite.libs.modules.tablist.reflection.TablistReflection;
-import net.minecraft.server.v1_8_R3.ChatComponentText;
-import net.minecraft.server.v1_8_R3.PacketPlayOutChat;
-import org.bukkit.entity.Player;
+import dev.azurite.libs.AzuriteLibs;
+import dev.azurite.libs.modules.tablist.Tablist;
+import dev.azurite.libs.modules.tablist.TablistModule;
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import plugin.TestPlugin;
 
 /**
  * Copyright (c) 2026. Keano
@@ -15,11 +16,16 @@ import org.bukkit.event.player.PlayerJoinEvent;
  */
 public class TestListener implements Listener {
 
+    private final TestPlugin plugin;
+
+    public TestListener(TestPlugin plugin) {
+        this.plugin = plugin;
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        Player player = e.getPlayer();
-        TablistReflection tablistReflection = new TablistReflection(player);
-        tablistReflection.sendPacket(new PacketPlayOutChat(new ChatComponentText("Test")));
-        tablistReflection.test();
+        AzuriteLibs azuriteLibs = new AzuriteLibs(plugin);
+        Tablist tablist = new Tablist(azuriteLibs.getModule(TablistModule.class), e.getPlayer());
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, tablist::createTablist);
     }
 }
