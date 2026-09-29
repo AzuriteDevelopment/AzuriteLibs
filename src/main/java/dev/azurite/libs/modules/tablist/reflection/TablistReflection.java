@@ -23,10 +23,12 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> {
     private static final Class<?> PLAYER_INFO_REMOVE_CLASS;
     private static final Class<?> PLAYER_INFO_ACTION_CLASS;
     private static final Class<?> PLAYER_INFO_ENTRY_CLASS;
+    private static final Class<?> HEADER_FOOTER_PACKET_CLASS;
     private static final Class<?> GAME_MODE_CLASS;
 
     private static final Constructor<?> PLAYER_INFO_UPDATE_CONSTRUCTOR;
     private static final Constructor<?> PLAYER_INFO_ENTRY_CONSTRUCTOR;
+    private static final Constructor<?> HEADER_FOOTER_PACKET_CONSTRUCTOR;
 
     private static final Enum<?> ACTION_ADD_PLAYER;
     private static final Enum<?> ACTION_UPDATE_LISTED;
@@ -35,6 +37,8 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> {
     private static final Enum<?> VALID_GAME_MODE_TYPE;
 
     private static final Field INFO_UPDATE_ENTRIES_FIELD;
+    private static final Field HEADER_PACKET_FIELD;
+    private static final Field FOOTER_PACKET_FIELD;
 
     static {
         try {
@@ -44,11 +48,13 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> {
             PLAYER_INFO_REMOVE_CLASS = NMSUtils.getNMSClassOrNull("network.protocol.game", "ClientboundPlayerInfoRemovePacket");
             PLAYER_INFO_ACTION_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerInfo$EnumPlayerInfoAction", "ClientboundPlayerInfoUpdatePacket$Action");
             PLAYER_INFO_ENTRY_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerInfo$PlayerInfoData", "ClientboundPlayerInfoUpdatePacket$Entry");
+            HEADER_FOOTER_PACKET_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerListHeaderFooter", "ClientboundTabListPacket");
             GAME_MODE_CLASS = NMSUtils.getNMSClass("world.level", "WorldSettings$EnumGamemode", "GameType");
 
             // Constructors
             PLAYER_INFO_UPDATE_CONSTRUCTOR = PLAYER_INFO_REMOVE_CLASS != null ? PLAYER_INFO_UPDATE_CLASS.getConstructor(EnumSet.class, List.class) : PLAYER_INFO_UPDATE_CLASS.getConstructor(PLAYER_INFO_ACTION_CLASS, Iterable.class);
             PLAYER_INFO_ENTRY_CONSTRUCTOR = PLAYER_INFO_ENTRY_CLASS.getConstructors()[0];
+            HEADER_FOOTER_PACKET_CONSTRUCTOR = HEADER_FOOTER_PACKET_CLASS.getConstructors()[0];
 
             // Enums
             VALID_GAME_MODE_TYPE = NMSUtils.findEnumConstant(GAME_MODE_CLASS, 1);
@@ -59,6 +65,8 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> {
 
             // Fields
             INFO_UPDATE_ENTRIES_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_UPDATE_CLASS, field -> field.getType() == List.class, true, true);
+            HEADER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 0);
+            FOOTER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 1);
 
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
@@ -70,6 +78,23 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> {
     public TablistReflection(TablistModule module, Player player) {
         super(module);
         this.player = player;
+    }
+
+    public void sendHeaderFooter(String header, String footer) {
+        try {
+
+            int length = HEADER_FOOTER_PACKET_CONSTRUCTOR.getParameterCount();
+            Object packet = length == 0 ? HEADER_FOOTER_PACKET_CONSTRUCTOR.newInstance() : HEADER_FOOTER_PACKET_CONSTRUCTOR.newInstance(NMSUtils.stringToComponent(header), NMSUtils.stringToComponent(footer));
+
+            if (length == 0) {
+                HEADER_PACKET_FIELD.set(packet, NMSUtils.stringToComponent(header));
+                FOOTER_PACKET_FIELD.set(packet, NMSUtils.stringToComponent(footer));
+            }
+            NMSUtils.sendPacket(player, packet);
+
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void sendCreationPacket(Collection<TablistEntry> entries) {

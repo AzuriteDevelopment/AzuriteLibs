@@ -47,10 +47,10 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
                 UUID uuid = UUID.randomUUID();
                 TablistEntry entry = new TablistEntry(uuid, getName(col, row), new GameProfile(uuid, getName(col, row)), -1);
                 entries.put(col, row, entry);
-                System.out.println("Created: " + col + " : " + row);
             }
         }
         reflection.sendCreationPacket(entries.values());
+        reflection.sendHeaderFooter("Test Hello \n Hello second line", "Test Hello \n Hello second line");
     }
 
     public String getName(int col, int row) {

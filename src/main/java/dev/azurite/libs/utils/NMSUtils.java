@@ -51,7 +51,7 @@ public class NMSUtils {
             PACKET_CLASS = getNMSClass("network.protocol", "Packet");
 
             PLAYER_GET_METHOD = CRAFT_PLAYER_CLASS.getMethod("getHandle");
-            FROM_STRING_METHOD = CRAFT_CHAT_MESSAGE_CLASS.getMethod("fromString", String.class);
+            FROM_STRING_METHOD = CRAFT_CHAT_MESSAGE_CLASS.getMethod("fromString", String.class, boolean.class);
             SEND_PACKET_METHOD = NMSUtils.streamMethodsFindFirst(PLAYER_CONNECTION_CLASS, method -> method.getParameterCount() == 1 && method.getParameterTypes()[0] == PACKET_CLASS && method.getReturnType() == void.class, true, true);
 
             PLAYER_CONNECTION_FIELD = NMSUtils.streamFieldsFindFirst(ENTITY_PLAYER_CLASS, field -> field.getType() == PLAYER_CONNECTION_CLASS, false, true);
@@ -63,7 +63,7 @@ public class NMSUtils {
 
     public static Object stringToComponent(String string) {
         try {
-            return ((Object[]) FROM_STRING_METHOD.invoke(null, string))[0];
+            return ((Object[]) FROM_STRING_METHOD.invoke(null, string, true))[0];
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -116,6 +116,10 @@ public class NMSUtils {
 
     public static Enum<?> findEnumConstant(Class<?> clazz, int index) {
         return (Enum<?>) clazz.getEnumConstants()[index];
+    }
+
+    public static Field streamFieldsFind(Class<?> clazz, Predicate<Field> predicate, boolean inheritedFields, boolean accessible, int index) {
+        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields()).filter(predicate).peek(field -> field.setAccessible(accessible)).toArray(Field[]::new)[index];
     }
 
     public static Field streamFieldsFindFirst(Class<?> clazz, Predicate<Field> predicate, boolean inheritedFields, boolean accessible) {
