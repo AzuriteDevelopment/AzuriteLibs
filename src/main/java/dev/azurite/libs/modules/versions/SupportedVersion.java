@@ -11,7 +11,8 @@ public enum SupportedVersion {
 
     V1_7_10,
     V1_8_8,
-    V26_2;
+    V26_2,
+    V26_3;
 
     public boolean isLegacy() {
         return this == V1_8_8;

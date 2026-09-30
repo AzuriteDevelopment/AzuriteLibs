@@ -2,16 +2,19 @@ package dev.azurite.libs.modules.tablist;
 
 import com.google.common.collect.Table;
 import com.google.common.collect.Tables;
+import com.mojang.authlib.GameProfile;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
 import dev.azurite.libs.modules.tablist.entry.TablistEntry;
 import dev.azurite.libs.modules.tablist.reflection.TablistReflection;
-import dev.azurite.libs.utils.NMSUtils;
 import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /**
  * Copyright (c) 2026. Keano
@@ -19,22 +22,28 @@ import java.util.concurrent.ConcurrentHashMap;
  * only permitted if given explicit permission.
  */
 @Getter
+@Setter
 @SuppressWarnings("UnstableApiUsage")
 public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
 
     private final Player player;
     private final Table<Integer, Integer, TablistEntry> entries;
+
     private final TablistReflection reflection;
+    private final AtomicBoolean initialized;
+
+    private int maxColumns;
 
     public Tablist(TablistModule module, Player player) {
         super(module);
         this.player = player;
         this.entries = Tables.newCustomTable(new ConcurrentHashMap<>(80), ConcurrentHashMap::new);
-        this.reflection = new TablistReflection(module, player);
+        this.initialized = new AtomicBoolean(false);
+        this.reflection = new TablistReflection(module, this);
     }
 
     public void setEntry(int col, int row, String display) {
-
+        this.setEntry(col, row, display, -1);
     }
 
     public void setEntry(int col, int row, String display, int ping) {
@@ -43,23 +52,20 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
         entry.setPing(ping);
     }
 
-    public void createTablist() {
-        for (int col = 0; col < 4; col++) {
-            for (int row = 0; row < 20; row++) {
-                UUID uuid = UUID.randomUUID();
-                TablistEntry entry = new TablistEntry(uuid, "", NMSUtils.createGameProfile(uuid, getName(col, row)), -1);
-                entries.put(col, row, entry);
+    public void forEachEntry(Consumer<TablistEntry> consumer) {
+        for (int row = 0; row < 20; row++) {
+            for (int col = 0; col < maxColumns; col++) {
+                TablistEntry entry = entries.get(col, row);
+
+                if (entry == null) {
+                    UUID uuid = UUID.randomUUID();
+                    String name = reflection.getTablistEntryName(col, row);
+                    entry = new TablistEntry(uuid, name, new GameProfile(uuid, name), -1);
+                }
+
+                consumer.accept(entry);
             }
         }
-        reflection.sendCreationPacket(entries.values());
-    }
-
-    public String getName(int col, int row) {
-        StringBuilder builder = new StringBuilder("§" + col);
-        for (char c : String.valueOf(row).toCharArray()) {
-            builder.append("§").append(c);
-        }
-        return builder.toString();
     }
 
     public void tick() {

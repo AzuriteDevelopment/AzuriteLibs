@@ -1,5 +1,6 @@
 package dev.azurite.libs.modules.tablist.entry;
 
+import com.mojang.authlib.GameProfile;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,13 +15,13 @@ import java.util.UUID;
 @Setter
 public class TablistEntry {
 
-    private UUID id;
+    private UUID uuid;
     private String display;
-    private Object profile;
+    private GameProfile profile;
     private int ping;
 
-    public TablistEntry(UUID id, String display, Object profile, int ping) {
-        this.id = id;
+    public TablistEntry(UUID uuid, String display, GameProfile profile, int ping) {
+        this.uuid = uuid;
         this.display = display;
         this.profile = profile;
         this.ping = ping;

@@ -1,5 +1,6 @@
 package plugin;
 
+import dev.azurite.libs.AzuriteLibs;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import plugin.listener.TestListener;
@@ -13,7 +14,8 @@ public class TestPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        Bukkit.getPluginManager().registerEvents(new TestListener(this), this);
+        AzuriteLibs azuriteLibs = new AzuriteLibs(this);
+        //Bukkit.getPluginManager().registerEvents(new TestListener(this), this);
     }
 
     @Override

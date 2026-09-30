@@ -2,10 +2,8 @@ package dev.azurite.libs.modules.netty;
 
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.Module;
-import dev.azurite.libs.modules.netty.injectors.LegacyNetty;
 import dev.azurite.libs.modules.netty.injectors.ModernNetty;
 import dev.azurite.libs.modules.netty.listener.NettyListener;
-import dev.azurite.libs.modules.versions.SupportedVersion;
 import dev.azurite.libs.utils.NMSUtils;
 import org.bukkit.entity.Player;
 
@@ -20,7 +18,7 @@ public class NettyModule extends Module<AzuriteLibs> {
 
     public NettyModule(AzuriteLibs loader) {
         super(loader);
-        this.netty = NMSUtils.SUPPORTED_VERSION == SupportedVersion.V1_7_10 ? new LegacyNetty() : new ModernNetty();
+        this.netty = new ModernNetty();
     }
 
     public void tryInjectListener(Player player, NettyListener listener, String name, boolean overwrite) {

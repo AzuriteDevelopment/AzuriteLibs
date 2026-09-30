@@ -2,7 +2,6 @@ package plugin.listener;
 
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.modules.tablist.Tablist;
-import dev.azurite.libs.modules.tablist.TablistModule;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -24,8 +23,7 @@ public class TestListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        AzuriteLibs azuriteLibs = new AzuriteLibs(plugin);
-        Tablist tablist = new Tablist(azuriteLibs.getModule(TablistModule.class), e.getPlayer());
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, tablist::createTablist);
+        //Tablist tablist = new Tablist(azuriteLibs.getTablistModule(), e.getPlayer());
+        //Bukkit.getScheduler().runTaskAsynchronously(plugin, tablist::createTablist);
     }
 }

@@ -4,7 +4,6 @@ import dev.azurite.libs.modules.versions.SupportedVersion;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -33,8 +32,6 @@ public class NMSUtils {
     public static final Class<?> NETTY_CHANNEL_CLASS;
     public static final Class<?> GAME_PROFILE_CLASS;
 
-    public static final Constructor<?> GAME_PROFILE_CONSTRUCTOR;
-
     public static final Method PLAYER_GET_METHOD;
     public static final Method FROM_STRING_METHOD;
     public static final Method SEND_PACKET_METHOD;
@@ -60,8 +57,6 @@ public class NMSUtils {
             PACKET_CLASS = getNMSClass("network.protocol", "Packet");
             NETTY_CHANNEL_CLASS = getNMSUtilClass("io.netty.channel.Channel");
             GAME_PROFILE_CLASS = getNMSUtilClass("com.mojang.authlib.GameProfile");
-
-            GAME_PROFILE_CONSTRUCTOR = GAME_PROFILE_CLASS.getConstructor(UUID.class, String.class);
 
             PLAYER_GET_METHOD = CRAFT_PLAYER_CLASS.getMethod("getHandle");
             FROM_STRING_METHOD = CRAFT_CHAT_MESSAGE_CLASS.getMethod("fromString", String.class, boolean.class);
@@ -93,14 +88,6 @@ public class NMSUtils {
         }
     }
 
-    public static Object createGameProfile(UUID uuid, String name) {
-        try {
-            return GAME_PROFILE_CONSTRUCTOR.newInstance(uuid, name);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public static Object stringToComponent(String string) {
         try {
             return ((Object[]) FROM_STRING_METHOD.invoke(null, string, true))[0];
@@ -109,10 +96,18 @@ public class NMSUtils {
         }
     }
 
+    public static Object getEntityPlayer(Player player) {
+        try {
+            return PLAYER_GET_METHOD.invoke(player);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static void sendPacket(Player player, Object packet) {
         try {
 
-            Object entityPlayer = PLAYER_GET_METHOD.invoke(player);
+            Object entityPlayer = getEntityPlayer(player);
             Object playerConnection = PLAYER_CONNECTION_FIELD.get(entityPlayer);
             SEND_PACKET_METHOD.invoke(playerConnection, packet);
 
@@ -122,10 +117,9 @@ public class NMSUtils {
     }
 
     public static Class<?> getNMSUtilClass(String name) {
-        String prefix = SUPPORTED_VERSION == SupportedVersion.V1_7_10 ? "net.minecraft.util." : "";
-        Class<?> clazz = findClass(prefix + name);
+        Class<?> clazz = findClass(name);
         if (clazz == null) {
-            throw new IllegalStateException("Could not find bukkit class: " + name);
+            throw new IllegalStateException("Could not find nms util class: " + name);
         }
         return clazz;
     }
@@ -149,6 +143,11 @@ public class NMSUtils {
     public static Class<?> getNMSClassOrNull(String modernPath, String... names) {
         for (String name : names) {
             Class<?> clazz = findClass(NMS_CLASS_PATH + (MODERN_PACKAGING && modernPath != null ? "." + modernPath + "." : ".") + name);
+
+            // If it has a path we should fall back to normal finding
+            if (name.contains(".") && clazz == null) {
+                clazz = findClass(name);
+            }
 
             if (clazz != null) {
                 return clazz;

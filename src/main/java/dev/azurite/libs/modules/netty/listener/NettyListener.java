@@ -1,5 +1,7 @@
 package dev.azurite.libs.modules.netty.listener;
 
+import org.bukkit.entity.Player;
+
 /**
  * Copyright (c) 2026. Keano
  * Use or redistribution of source or file is
@@ -7,8 +9,11 @@ package dev.azurite.libs.modules.netty.listener;
  */
 public interface NettyListener {
 
-    boolean write(Object packet);
+    default boolean write(Player player, Object packet) {
+        return true;
+    }
 
-    boolean read(Object packet);
-
+    default boolean read(Player player, Object packet) {
+        return true;
+    }
 }

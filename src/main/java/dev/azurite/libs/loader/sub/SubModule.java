@@ -1,6 +1,5 @@
 package dev.azurite.libs.loader.sub;
 
-import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.Module;
 import dev.azurite.libs.loader.ModuleLoader;
 import dev.azurite.libs.modules.commands.CommandModule;
@@ -26,11 +25,11 @@ public class SubModule<L extends ModuleLoader, M extends Module<L>> implements C
         this.plugin = module.getPlugin();
     }
 
-    public void registerAsCommand(AzuriteLibs azuriteLibs, String prefix) {
-        azuriteLibs.getModule(CommandModule.class).registerCommand(prefix, this);
+    public void register(CommandModule module, String prefix) {
+        module.registerCommand(prefix, this);
     }
 
-    public void registerAsListener() {
+    public void register() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 }
