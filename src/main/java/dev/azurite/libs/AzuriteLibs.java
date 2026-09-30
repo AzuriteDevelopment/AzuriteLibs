@@ -3,7 +3,9 @@ package dev.azurite.libs;
 import dev.azurite.libs.loader.ModuleLoader;
 import dev.azurite.libs.modules.commands.CommandModule;
 import dev.azurite.libs.modules.netty.NettyModule;
+import dev.azurite.libs.modules.tablist.Tablist;
 import dev.azurite.libs.modules.tablist.TablistModule;
+import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -24,5 +26,22 @@ public class AzuriteLibs extends ModuleLoader {
         this.nettyModule = new NettyModule(this);
         this.tablistModule = new TablistModule(this);
         this.commandModule = new CommandModule(this);
+
+        tablistModule.setAdapter(new TablistAdapter() {
+            @Override
+            public String[] getHeader() {
+                return new String[0];
+            }
+
+            @Override
+            public String[] getFooter() {
+                return new String[0];
+            }
+
+            @Override
+            public void updateEntries(Tablist tablist) {
+
+            }
+        });
     }
 }

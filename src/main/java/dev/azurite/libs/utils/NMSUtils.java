@@ -1,5 +1,9 @@
 package dev.azurite.libs.utils;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
+import dev.azurite.libs.modules.tablist.skin.TablistSkin;
 import dev.azurite.libs.modules.versions.SupportedVersion;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -7,7 +11,10 @@ import org.bukkit.entity.Player;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.function.Predicate;
 
 /**
@@ -35,10 +42,12 @@ public class NMSUtils {
     public static final Method PLAYER_GET_METHOD;
     public static final Method FROM_STRING_METHOD;
     public static final Method SEND_PACKET_METHOD;
+    public static final Method GET_GAME_PROFILE_METHOD;
 
     public static final Field PLAYER_CONNECTION_FIELD;
     public static final Field NETWORK_MANAGER_FIELD;
     public static final Field CHANNEL_FIELD;
+    public static final Field PROPERTY_MAP_FIELD;
 
     static {
         try {
@@ -60,13 +69,49 @@ public class NMSUtils {
 
             PLAYER_GET_METHOD = CRAFT_PLAYER_CLASS.getMethod("getHandle");
             FROM_STRING_METHOD = CRAFT_CHAT_MESSAGE_CLASS.getMethod("fromString", String.class, boolean.class);
-            SEND_PACKET_METHOD = NMSUtils.streamMethodsFindFirst(PLAYER_CONNECTION_CLASS, method -> method.getParameterCount() == 1 && method.getParameterTypes()[0] == PACKET_CLASS && method.getReturnType() == void.class, true, true);
+            SEND_PACKET_METHOD = streamMethodsFindFirst(PLAYER_CONNECTION_CLASS, method -> method.getParameterCount() == 1 && method.getParameterTypes()[0] == PACKET_CLASS && method.getReturnType() == void.class, true, true);
+            GET_GAME_PROFILE_METHOD = streamMethodsFindFirst(ENTITY_PLAYER_CLASS, method -> method.getReturnType() == GameProfile.class, true, true);
 
-            PLAYER_CONNECTION_FIELD = NMSUtils.streamFieldsFindFirst(ENTITY_PLAYER_CLASS, field -> field.getType() == PLAYER_CONNECTION_CLASS, false, true);
-            NETWORK_MANAGER_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_CONNECTION_CLASS, field -> field.getType() == NETWORK_MANAGER_CLASS, true, true);
-            CHANNEL_FIELD = NMSUtils.streamFieldsFindFirst(NETWORK_MANAGER_CLASS, field -> field.getType() == NETTY_CHANNEL_CLASS, true, true);
+            PLAYER_CONNECTION_FIELD = streamFieldsFindFirst(ENTITY_PLAYER_CLASS, field -> field.getType() == PLAYER_CONNECTION_CLASS, false, true);
+            NETWORK_MANAGER_FIELD = streamFieldsFindFirst(PLAYER_CONNECTION_CLASS, field -> field.getType() == NETWORK_MANAGER_CLASS, true, true);
+            CHANNEL_FIELD = streamFieldsFindFirst(NETWORK_MANAGER_CLASS, field -> field.getType() == NETTY_CHANNEL_CLASS, true, true);
+            PROPERTY_MAP_FIELD = streamFieldsFindFirst(GameProfile.class, field -> field.getType() == PropertyMap.class, false, true);
 
         } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static GameProfile getPlayerProfile(Player player) {
+        try {
+
+            return (GameProfile) GET_GAME_PROFILE_METHOD.invoke(getEntityPlayer(player));
+
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static PropertyMap getPropertyMap(Player player) {
+        try {
+
+            return (PropertyMap) PROPERTY_MAP_FIELD.get(getPlayerProfile(player));
+
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void setGameProfileSkin(GameProfile profile, TablistSkin skin) {
+        try {
+
+            PropertyMap propertyMap = (PropertyMap) PROPERTY_MAP_FIELD.get(profile);
+            propertyMap.removeAll("textures");
+            propertyMap.put("textures", skin.getSignature() == null ?
+                    new Property("textures", skin.getValue()) :
+                    new Property("textures", skin.getValue(), skin.getSignature()));
+
+        } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }

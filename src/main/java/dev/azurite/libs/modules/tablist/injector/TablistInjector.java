@@ -1,5 +1,6 @@
-package dev.azurite.libs.modules.tablist.reflection;
+package dev.azurite.libs.modules.tablist.injector;
 
+import com.google.common.collect.Tables;
 import com.mojang.authlib.GameProfile;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
@@ -7,6 +8,7 @@ import dev.azurite.libs.modules.netty.listener.NettyListener;
 import dev.azurite.libs.modules.tablist.Tablist;
 import dev.azurite.libs.modules.tablist.TablistModule;
 import dev.azurite.libs.modules.tablist.entry.TablistEntry;
+import dev.azurite.libs.modules.tablist.skin.DefaultSkins;
 import dev.azurite.libs.modules.versions.utils.VersionUtils;
 import dev.azurite.libs.utils.NMSUtils;
 import org.bukkit.entity.Player;
@@ -15,6 +17,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -22,7 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Use or redistribution of source or file is
  * only permitted if given explicit permission.
  */
-public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> implements NettyListener {
+@SuppressWarnings("UnstableApiUsage")
+public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> implements NettyListener {
 
     private static final Class<?> PLAYER_INFO_UPDATE_CLASS;
     private static final Class<?> PLAYER_INFO_REMOVE_CLASS;
@@ -83,7 +87,7 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> imp
     private final Tablist tablist;
     private final Player player;
 
-    public TablistReflection(TablistModule module, Tablist tablist) {
+    public TablistInjector(TablistModule module, Tablist tablist) {
         super(module);
         this.tablist = tablist;
         this.player = tablist.getPlayer();
@@ -92,7 +96,7 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> imp
     @Override
     public boolean write(Player player, Object packet) {
         /*
-        This will create the tablist at the earliest point possible while also being async
+        This will create the tablist at the earliest point possible while also being async (on netty thread)
         1.7 requires creation before any real player info packets are sent
         This will also allow us to not have to send remove/add packets
          */
@@ -151,9 +155,27 @@ public class TablistReflection extends SubModule<AzuriteLibs, TablistModule> imp
 
     private void createTablist() {
         List<TablistEntry> sendingOrder = new ArrayList<>();
-        int version = VersionUtils.getProtocolVersion(player);
-        tablist.setMaxColumns(version == 5 ? 3 : 4);
-        tablist.forEachEntry(sendingOrder::add);
+        int maxColumns = VersionUtils.getProtocolVersion(player) == 5 ? 3 : 4;
+
+        tablist.setMaxColumns(maxColumns);
+        tablist.setEntries(Tables.newCustomTable(new ConcurrentHashMap<>(maxColumns * 20), ConcurrentHashMap::new));
+        module.getAdapter().updateEntries(tablist);
+
+        for (int row = 0; row < 20; row++) {
+            for (int col = 0; col < maxColumns; col++) {
+                TablistEntry entry = tablist.getEntries().get(col, row);
+
+                if (entry == null) {
+                    UUID uuid = UUID.randomUUID();
+                    GameProfile gameProfile = new GameProfile(uuid, getTablistEntryName(col, row));
+                    NMSUtils.setGameProfileSkin(gameProfile, DefaultSkins.GRAY);
+                    entry = new TablistEntry(uuid, "", gameProfile, null, -1);
+                }
+
+                sendingOrder.add(entry);
+            }
+        }
+
         this.sendCreationPacket(sendingOrder);
     }
 

@@ -1,6 +1,7 @@
 package dev.azurite.libs.modules.tablist.entry;
 
 import com.mojang.authlib.GameProfile;
+import dev.azurite.libs.modules.tablist.skin.TablistSkin;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,12 +19,17 @@ public class TablistEntry {
     private UUID uuid;
     private String display;
     private GameProfile profile;
-    private int ping;
+    private TablistSkin skin;
 
-    public TablistEntry(UUID uuid, String display, GameProfile profile, int ping) {
+    private int ping;
+    private boolean dirty;
+
+    public TablistEntry(UUID uuid, String display, GameProfile profile, TablistSkin skin, int ping) {
         this.uuid = uuid;
         this.display = display;
         this.profile = profile;
+        this.skin = skin;
         this.ping = ping;
+        this.dirty = true;
     }
 }

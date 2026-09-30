@@ -9,7 +9,6 @@ import org.bukkit.Bukkit;
  */
 public enum SupportedVersion {
 
-    V1_7_10,
     V1_8_8,
     V26_2,
     V26_3;

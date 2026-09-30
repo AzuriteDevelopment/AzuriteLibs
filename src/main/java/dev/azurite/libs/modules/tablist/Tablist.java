@@ -1,20 +1,19 @@
 package dev.azurite.libs.modules.tablist;
 
 import com.google.common.collect.Table;
-import com.google.common.collect.Tables;
-import com.mojang.authlib.GameProfile;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
+import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
 import dev.azurite.libs.modules.tablist.entry.TablistEntry;
-import dev.azurite.libs.modules.tablist.reflection.TablistReflection;
+import dev.azurite.libs.modules.tablist.injector.TablistInjector;
+import dev.azurite.libs.modules.tablist.skin.DefaultSkins;
+import dev.azurite.libs.modules.tablist.skin.TablistSkin;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.entity.Player;
 
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 
 /**
  * Copyright (c) 2026. Keano
@@ -23,23 +22,28 @@ import java.util.function.Consumer;
  */
 @Getter
 @Setter
-@SuppressWarnings("UnstableApiUsage")
 public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
 
     private final Player player;
-    private final Table<Integer, Integer, TablistEntry> entries;
-
-    private final TablistReflection reflection;
+    private final TablistInjector reflection;
     private final AtomicBoolean initialized;
+
+    private Table<Integer, Integer, TablistEntry> entries;
+
+    private String[] currentHeader;
+    private String[] currentFooter;
 
     private int maxColumns;
 
     public Tablist(TablistModule module, Player player) {
         super(module);
         this.player = player;
-        this.entries = Tables.newCustomTable(new ConcurrentHashMap<>(80), ConcurrentHashMap::new);
+        this.reflection = new TablistInjector(module, this);
         this.initialized = new AtomicBoolean(false);
-        this.reflection = new TablistReflection(module, this);
+        this.entries = null;
+        this.currentHeader = null;
+        this.currentFooter = null;
+        this.maxColumns = 4;
     }
 
     public void setEntry(int col, int row, String display) {
@@ -47,34 +51,46 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
     }
 
     public void setEntry(int col, int row, String display, int ping) {
+        this.setEntry(col, row, display, ping, DefaultSkins.GRAY);
+    }
+
+    public void setEntry(int col, int row, String display, int ping, TablistSkin skin) {
         TablistEntry entry = entries.get(col, row);
-        entry.setDisplay(display);
-        entry.setPing(ping);
-    }
+        boolean dirty = false;
 
-    public void forEachEntry(Consumer<TablistEntry> consumer) {
-        for (int row = 0; row < 20; row++) {
-            for (int col = 0; col < maxColumns; col++) {
-                TablistEntry entry = entries.get(col, row);
-
-                if (entry == null) {
-                    UUID uuid = UUID.randomUUID();
-                    String name = reflection.getTablistEntryName(col, row);
-                    entry = new TablistEntry(uuid, name, new GameProfile(uuid, name), -1);
-                }
-
-                consumer.accept(entry);
-            }
+        if (!entry.getDisplay().equals(display)) {
+            entry.setDisplay(display);
+            dirty = true;
         }
+
+        if (entry.getPing() != ping) {
+            entry.setPing(ping);
+            dirty = true;
+        }
+
+        if (entry.getSkin().equals(skin)) {
+            entry.setSkin(skin);
+            dirty = true;
+        }
+
+        entry.setDirty(dirty);
     }
 
-    public void tick() {
-        module.getAdapter().updateEntries(this);
+    public void update() {
+        TablistAdapter adapter = module.getAdapter();
+        String[] header = adapter.getHeader();
+        String[] footer = adapter.getFooter();
 
-        for (Table.Cell<Integer, Integer, TablistEntry> cell : entries.cellSet()) {
-            Integer column = cell.getRowKey();
-            Integer row = cell.getColumnKey();
-            TablistEntry entry = cell.getValue();
+        adapter.updateEntries(this);
+
+        if (!Arrays.equals(currentHeader, header) || !Arrays.equals(currentFooter, footer)) {
+            currentHeader = header;
+            currentFooter = footer;
+            reflection.sendHeaderFooter(String.join("\n", header), String.join("\n", footer));
+        }
+
+        for (TablistEntry entry : entries.values()) {
+            if (!entry.isDirty()) continue;
 
         }
     }
