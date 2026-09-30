@@ -2,11 +2,11 @@ package dev.azurite.libs.modules.tablist;
 
 import com.google.common.collect.Table;
 import com.google.common.collect.Tables;
-import com.mojang.authlib.GameProfile;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
 import dev.azurite.libs.modules.tablist.entry.TablistEntry;
 import dev.azurite.libs.modules.tablist.reflection.TablistReflection;
+import dev.azurite.libs.utils.NMSUtils;
 import lombok.Getter;
 import org.bukkit.entity.Player;
 
@@ -38,19 +38,20 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
     }
 
     public void setEntry(int col, int row, String display, int ping) {
-
+        TablistEntry entry = entries.get(col, row);
+        entry.setDisplay(display);
+        entry.setPing(ping);
     }
 
     public void createTablist() {
         for (int col = 0; col < 4; col++) {
             for (int row = 0; row < 20; row++) {
                 UUID uuid = UUID.randomUUID();
-                TablistEntry entry = new TablistEntry(uuid, getName(col, row), new GameProfile(uuid, getName(col, row)), -1);
+                TablistEntry entry = new TablistEntry(uuid, "", NMSUtils.createGameProfile(uuid, getName(col, row)), -1);
                 entries.put(col, row, entry);
             }
         }
         reflection.sendCreationPacket(entries.values());
-        reflection.sendHeaderFooter("Test Hello \n Hello second line", "Test Hello \n Hello second line");
     }
 
     public String getName(int col, int row) {
@@ -62,7 +63,6 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
     }
 
     public void tick() {
-        entries.clear();
         module.getAdapter().updateEntries(this);
 
         for (Table.Cell<Integer, Integer, TablistEntry> cell : entries.cellSet()) {

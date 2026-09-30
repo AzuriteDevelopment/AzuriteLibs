@@ -2,9 +2,14 @@ package dev.azurite.libs.modules.tablist;
 
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.Module;
+import dev.azurite.libs.loader.sub.SubModule;
 import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
+import dev.azurite.libs.modules.tablist.listener.TablistListener;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * Copyright (c) 2026. Keano
@@ -32,8 +37,10 @@ public class TablistModule extends Module<AzuriteLibs> {
 
             @Override
             public void updateEntries(Tablist tablist) {
-
             }
         };
+        Collections.singletonList(
+                new TablistListener(this)
+        ).forEach(SubModule::registerAsListener);
     }
 }
