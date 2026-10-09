@@ -3,6 +3,7 @@ package dev.azurite.libs.modules.tablist;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.Module;
 import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
+import dev.azurite.libs.modules.tablist.listener.TablistListener;
 import dev.azurite.libs.modules.tablist.thread.TablistThread;
 import dev.azurite.libs.utils.NamedThreadFactory;
 import lombok.Getter;
@@ -29,10 +30,17 @@ public class TablistModule extends Module<AzuriteLibs> {
 
     public TablistModule(AzuriteLibs azuriteLibs) {
         super(azuriteLibs);
+
         this.tablists = new ConcurrentHashMap<>();
         this.tablistThread = Executors.newScheduledThreadPool(1, new NamedThreadFactory("azurite_tablist"));
         this.future = null;
         this.adapter = null;
+
+        new TablistListener(this).register();
+    }
+
+    public boolean isEnabled() {
+        return adapter != null;
     }
 
     public Tablist getTablist(UUID uuid) {

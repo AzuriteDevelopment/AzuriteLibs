@@ -6,7 +6,9 @@ import dev.azurite.libs.modules.netty.NettyModule;
 import dev.azurite.libs.modules.tablist.Tablist;
 import dev.azurite.libs.modules.tablist.TablistModule;
 import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
+import dev.azurite.libs.modules.tablist.skin.TablistSkin;
 import lombok.Getter;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -27,20 +29,35 @@ public class AzuriteLibs extends ModuleLoader {
         this.tablistModule = new TablistModule(this);
         this.commandModule = new CommandModule(this);
 
+        tablistModule.setTickingTime(500L);
         tablistModule.setAdapter(new TablistAdapter() {
             @Override
-            public String[] getHeader() {
-                return new String[0];
+            public String[] getHeader(Player player) {
+                return new String[]{
+                        "&5Hello",
+                        "&cLine 2 Hello",
+                        player.getLocation().getBlockX() + ", " + player.getLocation().getBlockY() + ", " + player.getLocation().getBlockZ()
+                };
             }
 
             @Override
-            public String[] getFooter() {
-                return new String[0];
+            public String[] getFooter(Player player) {
+                return new String[]{
+                        "&5End Hello",
+                        "&cEnd Line 2 Hello",
+                        player.getLocation().getBlockX() + ", " + player.getLocation().getBlockY() + ", " + player.getLocation().getBlockZ()
+                };
             }
 
             @Override
-            public void updateEntries(Tablist tablist) {
+            public void updateEntries(Player player, Tablist tablist) {
+                for (int row = 0; row < 20; row++) {
+                    for (int col = 0; col < tablist.getMaxColumns(); col++) {
+                        tablist.setEntry(col, row, "&5Col: " + col + " Row: " + row);
+                    }
+                }
 
+                tablist.setEntry(0, 0, "&c" + player.getName() + " " + "&9" + player.getLocation().getBlockX() + ", " + player.getLocation().getBlockY() + ", " + player.getLocation().getBlockZ(), TablistSkin.getFromPlayer(player));
             }
         });
     }

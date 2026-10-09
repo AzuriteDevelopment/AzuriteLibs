@@ -29,6 +29,10 @@ public class TablistSkin {
         this.signature = signature;
     }
 
+    public Property getProperty() {
+        return signature == null ? new Property("textures", value) : new Property("textures", value, signature);
+    }
+
     @Override
     public boolean equals(Object object) {
         if (object == null || getClass() != object.getClass()) return false;

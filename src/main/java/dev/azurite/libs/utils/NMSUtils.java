@@ -1,5 +1,6 @@
 package dev.azurite.libs.utils;
 
+import com.google.common.collect.ImmutableMultimap;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
@@ -8,14 +9,13 @@ import dev.azurite.libs.modules.versions.SupportedVersion;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Copyright (c) 2026. Keano
@@ -38,6 +38,10 @@ public class NMSUtils {
     public static final Class<?> PACKET_CLASS;
     public static final Class<?> NETTY_CHANNEL_CLASS;
     public static final Class<?> GAME_PROFILE_CLASS;
+    public static final Class<?> PROPERTY_MAP_CLASS;
+
+    public static final Constructor<?> GAME_PROFILE_CONSTRUCTOR;
+    public static final Constructor<?> PROPERTY_MAP_CONSTRUCTOR;
 
     public static final Method PLAYER_GET_METHOD;
     public static final Method FROM_STRING_METHOD;
@@ -66,6 +70,10 @@ public class NMSUtils {
             PACKET_CLASS = getNMSClass("network.protocol", "Packet");
             NETTY_CHANNEL_CLASS = getNMSUtilClass("io.netty.channel.Channel");
             GAME_PROFILE_CLASS = getNMSUtilClass("com.mojang.authlib.GameProfile");
+            PROPERTY_MAP_CLASS = getNMSUtilClass("com.mojang.authlib.properties.PropertyMap");
+
+            GAME_PROFILE_CONSTRUCTOR = GAME_PROFILE_CLASS.getConstructors()[0];
+            PROPERTY_MAP_CONSTRUCTOR = PROPERTY_MAP_CLASS.getConstructors()[0];
 
             PLAYER_GET_METHOD = CRAFT_PLAYER_CLASS.getMethod("getHandle");
             FROM_STRING_METHOD = CRAFT_CHAT_MESSAGE_CLASS.getMethod("fromString", String.class, boolean.class);
@@ -82,12 +90,28 @@ public class NMSUtils {
         }
     }
 
-    public static GameProfile getPlayerProfile(Player player) {
+    public static GameProfile createProfile(UUID uuid, String name, TablistSkin skin) {
         try {
+            GameProfile profile;
+            PropertyMap propertyMap;
+            int length = GAME_PROFILE_CONSTRUCTOR.getParameterCount();
 
-            return (GameProfile) GET_GAME_PROFILE_METHOD.invoke(getEntityPlayer(player));
+            if (length == 2) {
+                profile = (GameProfile) GAME_PROFILE_CONSTRUCTOR.newInstance(uuid, name);
+                propertyMap = (PropertyMap) PROPERTY_MAP_FIELD.get(profile);
+                propertyMap.removeAll("textures");
+                propertyMap.put("textures", skin.getProperty());
 
-        } catch (IllegalAccessException | InvocationTargetException e) {
+            } else {
+                ImmutableMultimap.Builder<String, Property> result = ImmutableMultimap.builder();
+                result.put("textures", skin.getProperty());
+                propertyMap = (PropertyMap) PROPERTY_MAP_CONSTRUCTOR.newInstance(result.build());
+                profile = (GameProfile) GAME_PROFILE_CONSTRUCTOR.newInstance(uuid, name, propertyMap);
+            }
+
+            return profile;
+
+        } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
@@ -95,23 +119,10 @@ public class NMSUtils {
     public static PropertyMap getPropertyMap(Player player) {
         try {
 
-            return (PropertyMap) PROPERTY_MAP_FIELD.get(getPlayerProfile(player));
+            GameProfile gameProfile = (GameProfile) GET_GAME_PROFILE_METHOD.invoke(getEntityPlayer(player));
+            return (PropertyMap) PROPERTY_MAP_FIELD.get(gameProfile);
 
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void setGameProfileSkin(GameProfile profile, TablistSkin skin) {
-        try {
-
-            PropertyMap propertyMap = (PropertyMap) PROPERTY_MAP_FIELD.get(profile);
-            propertyMap.removeAll("textures");
-            propertyMap.put("textures", skin.getSignature() == null ?
-                    new Property("textures", skin.getValue()) :
-                    new Property("textures", skin.getValue(), skin.getSignature()));
-
-        } catch (IllegalAccessException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }
@@ -189,11 +200,6 @@ public class NMSUtils {
         for (String name : names) {
             Class<?> clazz = findClass(NMS_CLASS_PATH + (MODERN_PACKAGING && modernPath != null ? "." + modernPath + "." : ".") + name);
 
-            // If it has a path we should fall back to normal finding
-            if (name.contains(".") && clazz == null) {
-                clazz = findClass(name);
-            }
-
             if (clazz != null) {
                 return clazz;
             }
@@ -209,6 +215,10 @@ public class NMSUtils {
 
     public static Enum<?> findEnumConstant(Class<?> clazz, int index) {
         return (Enum<?>) clazz.getEnumConstants()[index];
+    }
+
+    public static Field[] streamFieldsFindAllType(Class<?> clazz, Class<?> type, boolean inheritedFields, boolean accessible) {
+        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields()).filter(field -> field.getType() == type).peek(field -> field.setAccessible(accessible)).toArray(Field[]::new);
     }
 
     public static Field streamFieldsFind(Class<?> clazz, Predicate<Field> predicate, boolean inheritedFields, boolean accessible, int index) {

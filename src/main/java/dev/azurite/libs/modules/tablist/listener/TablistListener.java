@@ -24,9 +24,10 @@ public class TablistListener extends SubModule<AzuriteLibs, TablistModule> {
     public void onJoin(PlayerJoinEvent e) {
         Player player = e.getPlayer();
 
-        if (module.getAdapter() != null) {
+        if (module.isEnabled()) {
             Tablist tablist = new Tablist(module, player);
-            moduleLoader.getNettyModule().tryInjectListener(player, tablist.getReflection(), "azurite_tablist", false);
+            module.getTablists().put(player.getUniqueId(), tablist);
+            moduleLoader.getNettyModule().tryInjectListener(player, tablist.getInjector(), "azurite_tablist", false);
         }
     }
 }

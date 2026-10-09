@@ -1,6 +1,5 @@
 package dev.azurite.libs.utils;
 
-import dev.azurite.libs.modules.versions.SupportedVersion;
 import org.bukkit.ChatColor;
 
 import java.util.List;
@@ -21,30 +20,30 @@ public class CC {
     private static final Function<String, String> REPLACER;
 
     static {
-        SupportedVersion supportedVersion = SupportedVersion.getSupportedVersion();
-
-        if (supportedVersion.isLegacy()) {
-            REPLACER = s -> ChatColor.translateAlternateColorCodes('&', s);
-
-        } else {
-            REPLACER = s -> {
-                Matcher matcher = HEX_PATTERN.matcher(s);
-                StringBuffer buffer = new StringBuffer(s.length() + 4 * 8);
-                while (matcher.find()) {
-                    String group = matcher.group(1);
-                    matcher.appendReplacement(buffer, COLOR_CHAR + "x"
-                            + COLOR_CHAR + group.charAt(0) + COLOR_CHAR + group.charAt(1)
-                            + COLOR_CHAR + group.charAt(2) + COLOR_CHAR + group.charAt(3)
-                            + COLOR_CHAR + group.charAt(4) + COLOR_CHAR + group.charAt(5)
-                    );
-                }
-                return ChatColor.translateAlternateColorCodes('&', matcher.appendTail(buffer).toString());
-            };
-        }
+        REPLACER = s -> {
+            Matcher matcher = HEX_PATTERN.matcher(s);
+            StringBuffer buffer = new StringBuffer(s.length() + 4 * 8);
+            while (matcher.find()) {
+                String group = matcher.group(1);
+                matcher.appendReplacement(buffer, COLOR_CHAR + "x"
+                        + COLOR_CHAR + group.charAt(0) + COLOR_CHAR + group.charAt(1)
+                        + COLOR_CHAR + group.charAt(2) + COLOR_CHAR + group.charAt(3)
+                        + COLOR_CHAR + group.charAt(4) + COLOR_CHAR + group.charAt(5)
+                );
+            }
+            return ChatColor.translateAlternateColorCodes('&', matcher.appendTail(buffer).toString());
+        };
     }
 
     public static String t(String t) {
         return REPLACER.apply(t);
+    }
+
+    public static String[] t(String[] t) {
+        for (int i = 0; i < t.length; i++) {
+            t[i] = t(t[i]);
+        }
+        return t;
     }
 
     public static List<String> t(List<String> t) {

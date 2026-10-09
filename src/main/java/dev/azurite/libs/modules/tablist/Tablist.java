@@ -8,12 +8,12 @@ import dev.azurite.libs.modules.tablist.entry.TablistEntry;
 import dev.azurite.libs.modules.tablist.injector.TablistInjector;
 import dev.azurite.libs.modules.tablist.skin.DefaultSkins;
 import dev.azurite.libs.modules.tablist.skin.TablistSkin;
+import dev.azurite.libs.utils.CC;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.entity.Player;
 
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Copyright (c) 2026. Keano
@@ -25,24 +25,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
 
     private final Player player;
-    private final TablistInjector reflection;
-    private final AtomicBoolean initialized;
+    private final TablistInjector injector;
 
     private Table<Integer, Integer, TablistEntry> entries;
 
     private String[] currentHeader;
     private String[] currentFooter;
 
+    private volatile boolean initialized;
     private int maxColumns;
 
     public Tablist(TablistModule module, Player player) {
         super(module);
         this.player = player;
-        this.reflection = new TablistInjector(module, this);
-        this.initialized = new AtomicBoolean(false);
+        this.injector = new TablistInjector(module, this);
         this.entries = null;
         this.currentHeader = null;
         this.currentFooter = null;
+        this.initialized = false;
         this.maxColumns = 4;
     }
 
@@ -54,44 +54,35 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
         this.setEntry(col, row, display, ping, DefaultSkins.GRAY);
     }
 
+    public void setEntry(int col, int row, String display, TablistSkin skin) {
+        this.setEntry(col, row, display, -1, skin);
+    }
+
     public void setEntry(int col, int row, String display, int ping, TablistSkin skin) {
         TablistEntry entry = entries.get(col, row);
-        boolean dirty = false;
-
-        if (!entry.getDisplay().equals(display)) {
-            entry.setDisplay(display);
-            dirty = true;
-        }
-
-        if (entry.getPing() != ping) {
-            entry.setPing(ping);
-            dirty = true;
-        }
-
-        if (entry.getSkin().equals(skin)) {
-            entry.setSkin(skin);
-            dirty = true;
-        }
-
-        entry.setDirty(dirty);
+        entry.setDisplay(CC.t(display));
+        entry.setPing(ping);
+        entry.setSkin(skin);
     }
 
     public void update() {
         TablistAdapter adapter = module.getAdapter();
-        String[] header = adapter.getHeader();
-        String[] footer = adapter.getFooter();
+        adapter.updateEntries(player, this);
 
-        adapter.updateEntries(this);
+        if (maxColumns == 4) {
+            String[] header = adapter.getHeader(player);
+            String[] footer = adapter.getFooter(player);
 
-        if (!Arrays.equals(currentHeader, header) || !Arrays.equals(currentFooter, footer)) {
-            currentHeader = header;
-            currentFooter = footer;
-            reflection.sendHeaderFooter(String.join("\n", header), String.join("\n", footer));
+            if (!Arrays.equals(currentHeader, header) || !Arrays.equals(currentFooter, footer)) {
+                this.currentHeader = header;
+                this.currentFooter = footer;
+                injector.sendHeaderFooter(String.join("\n", CC.t(header)), String.join("\n", CC.t(footer)));
+            }
         }
 
         for (TablistEntry entry : entries.values()) {
-            if (!entry.isDirty()) continue;
-
+            injector.sendTablistUpdate(entry);
+            entry.setOldValue(new TablistEntry(entry));
         }
     }
 }

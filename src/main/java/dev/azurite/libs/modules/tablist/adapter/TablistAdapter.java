@@ -1,6 +1,7 @@
 package dev.azurite.libs.modules.tablist.adapter;
 
 import dev.azurite.libs.modules.tablist.Tablist;
+import org.bukkit.entity.Player;
 
 /**
  * Copyright (c) 2026. Keano
@@ -9,10 +10,10 @@ import dev.azurite.libs.modules.tablist.Tablist;
  */
 public interface TablistAdapter {
 
-    String[] getHeader();
+    String[] getHeader(Player player);
 
-    String[] getFooter();
+    String[] getFooter(Player player);
 
-    void updateEntries(Tablist tablist);
+    void updateEntries(Player player, Tablist tablist);
 
 }

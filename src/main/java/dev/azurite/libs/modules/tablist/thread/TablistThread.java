@@ -19,8 +19,9 @@ public class TablistThread extends Thread {
     @Override
     public void run() {
         for (Tablist tablist : module.getTablists().values()) {
-            if (!tablist.getInitialized().get()) return;
-            tablist.update();
+            if (tablist.isInitialized()) {
+                tablist.update();
+            }
         }
     }
 }
