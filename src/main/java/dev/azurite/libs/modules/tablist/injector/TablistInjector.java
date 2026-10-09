@@ -138,8 +138,8 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
         }
 
         if (!version1_7 && !oldEntry.getSkin().equals(entry.getSkin())) {
-            entry.setProfile(NMSUtils.createProfile(entry.getUuid(), entry.getProfileName(), entry.getSkin()));
             this.sendInfoPackets(Collections.singletonList(entry), ACTION_REMOVE_PLAYER);
+            entry.setProfile(NMSUtils.createProfile(entry.getUuid(), entry.getProfileName(), entry.getSkin()));
             this.sendInfoPackets(Collections.singletonList(entry), ACTION_ADD_PLAYER);
         }
     }
@@ -203,6 +203,19 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
         tablist.setMaxColumns(maxColumns);
         tablist.setEntries(entries);
 
+        this.createAndUpdateEntries(entries, sendingOrder, maxColumns);
+
+        // Only set profile after we've updated entries as the skin could have changed.
+        sendingOrder.forEach(entry -> {
+            UUID uuid = UUID.randomUUID();
+            entry.setProfile(NMSUtils.createProfile(uuid, entry.getProfileName(), entry.getSkin()));
+            entry.setOldValue(new TablistEntry(entry));
+        });
+
+        this.sendInfoPackets(sendingOrder, ACTION_ADD_PLAYER, ACTION_UPDATE_LATENCY, ACTION_UPDATE_DISPLAY_NAME, ACTION_UPDATE_LISTED);
+    }
+
+    private void createAndUpdateEntries(Table<Integer, Integer, TablistEntry> entries, List<TablistEntry> sendingOrder, int maxColumns) {
         for (int row = 0; row < 20; row++) {
             for (int col = 0; col < maxColumns; col++) {
                 TablistSkin skin = DefaultSkins.GRAY;
@@ -212,17 +225,13 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
                 String numberName = getNumberName(row, col);
                 String profileName = version1_7 ? invisibleName : numberName;
 
-                GameProfile gameProfile = NMSUtils.createProfile(uuid, profileName, skin);
-                TablistEntry entry = new TablistEntry(uuid, "", profileName, numberName, gameProfile, skin, -1);
+                TablistEntry entry = new TablistEntry(uuid, "", profileName, numberName, null, skin, -1);
 
                 entries.put(col, row, entry);
                 sendingOrder.add(entry);
             }
         }
-
         module.getAdapter().updateEntries(player, tablist);
-        sendingOrder.forEach(entry -> entry.setOldValue(new TablistEntry(entry)));
-        this.sendInfoPackets(sendingOrder, ACTION_ADD_PLAYER, ACTION_UPDATE_LATENCY, ACTION_UPDATE_DISPLAY_NAME, ACTION_UPDATE_LISTED);
     }
 
     private void sendInfoPackets(List<TablistEntry> entries, Enum<?>... actions) {

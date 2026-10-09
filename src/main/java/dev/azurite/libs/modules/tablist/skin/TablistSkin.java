@@ -36,8 +36,8 @@ public class TablistSkin {
     @Override
     public boolean equals(Object object) {
         if (object == null || getClass() != object.getClass()) return false;
-        TablistSkin that = (TablistSkin) object;
-        return Objects.equals(value, that.value) && Objects.equals(signature, that.signature);
+        TablistSkin skin = (TablistSkin) object;
+        return Objects.equals(value, skin.value) && Objects.equals(signature, skin.signature);
     }
 
     @Override
