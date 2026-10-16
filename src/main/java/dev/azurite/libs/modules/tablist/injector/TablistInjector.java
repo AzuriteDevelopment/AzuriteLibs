@@ -13,7 +13,6 @@ import dev.azurite.libs.modules.tablist.skin.DefaultSkins;
 import dev.azurite.libs.modules.tablist.skin.TablistSkin;
 import dev.azurite.libs.modules.versions.utils.VersionUtils;
 import dev.azurite.libs.utils.NMSUtils;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.lang.reflect.Constructor;
@@ -42,7 +41,6 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
     private static final Constructor<?> PLAYER_INFO_UPDATE_CONSTRUCTOR;
     private static final Constructor<?> PLAYER_INFO_REMOVE_CONSTRUCTOR;
     private static final Constructor<?> PLAYER_INFO_ENTRY_CONSTRUCTOR;
-    private static final Constructor<?> SCOREBOARD_TEAM_PACKET_CONSTRUCTOR;
     private static final Constructor<?> HEADER_FOOTER_PACKET_CONSTRUCTOR;
 
     private static final Enum<?> VALID_GAME_MODE_TYPE;
@@ -77,8 +75,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
             PLAYER_INFO_UPDATE_CONSTRUCTOR = PLAYER_INFO_REMOVE_CLASS != null ? PLAYER_INFO_UPDATE_CLASS.getConstructor(EnumSet.class, List.class) : PLAYER_INFO_UPDATE_CLASS.getConstructor(PLAYER_INFO_ACTION_CLASS, Iterable.class);
             PLAYER_INFO_REMOVE_CONSTRUCTOR = PLAYER_INFO_REMOVE_CLASS != null ? PLAYER_INFO_REMOVE_CLASS.getConstructors()[0] : null;
             PLAYER_INFO_ENTRY_CONSTRUCTOR = PLAYER_INFO_ENTRY_CLASS.getConstructors()[0];
-            SCOREBOARD_TEAM_PACKET_CONSTRUCTOR = SCOREBOARD_TEAM_PACKET_CLASS != null ? Arrays.stream(SCOREBOARD_TEAM_PACKET_CLASS.getConstructors()).filter(constructor -> constructor.getParameterCount() == 0).findFirst().orElse(null) : null;
-            HEADER_FOOTER_PACKET_CONSTRUCTOR = Arrays.stream(HEADER_FOOTER_PACKET_CLASS.getConstructors()).filter(constructor -> constructor.getParameterCount() > 0).findFirst().orElse(HEADER_FOOTER_PACKET_CLASS.getConstructors()[0]);
+            HEADER_FOOTER_PACKET_CONSTRUCTOR = NMSUtils.streamFindConstructor(HEADER_FOOTER_PACKET_CLASS, constructor -> constructor.getParameterCount() > 0, true, HEADER_FOOTER_PACKET_CLASS.getConstructors()[0]);
 
             // Enums
             VALID_GAME_MODE_TYPE = NMSUtils.findEnumConstant(GAME_MODE_CLASS, 1);
@@ -288,47 +285,47 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
     }
 
     private void handleTeamsPackets(List<Object> packets, List<TablistEntry> entries, int scoreboardAction) {
-        try {
-            for (TablistEntry entry : entries) {
-                String display = entry.getDisplay();
-                String prefix;
-                String suffix;
-
-                if (display.length() <= 16) {
-                    prefix = display;
-                    suffix = "";
-
-                } else {
-                    prefix = display.substring(0, 16);
-                    suffix = display.substring(16);
-
-                    if (prefix.endsWith("§")) {
-                        prefix = display.substring(0, 15);
-                        suffix = display.substring(15);
-                    }
-
-                    if (!suffix.startsWith("§")) {
-                        suffix = ChatColor.getLastColors(prefix) + suffix;
-                    }
-                }
-
-                Object scoreboardPacket = SCOREBOARD_TEAM_PACKET_CONSTRUCTOR.newInstance();
-
-                SCOREBOARD_TEAM_PACKET_INTS[1].set(scoreboardPacket, scoreboardAction);
-                SCOREBOARD_TEAM_PACKET_STRINGS[0].set(scoreboardPacket, entry.getNumberName());
-                SCOREBOARD_TEAM_PACKET_STRINGS[1].set(scoreboardPacket, entry.getNumberName());
-                SCOREBOARD_TEAM_PACKET_STRINGS[2].set(scoreboardPacket, prefix);
-                SCOREBOARD_TEAM_PACKET_STRINGS[3].set(scoreboardPacket, suffix);
-
-                if (scoreboardAction == 0) {
-                    SCOREBOARD_TEAM_NAMES.set(scoreboardPacket, Collections.singletonList(entry.getProfileName()));
-                }
-
-                packets.add(scoreboardPacket);
-            }
-        } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+//        try {
+//            for (TablistEntry entry : entries) {
+//                String display = entry.getDisplay();
+//                String prefix;
+//                String suffix;
+//
+//                if (display.length() <= 16) {
+//                    prefix = display;
+//                    suffix = "";
+//
+//                } else {
+//                    prefix = display.substring(0, 16);
+//                    suffix = display.substring(16);
+//
+//                    if (prefix.endsWith("§")) {
+//                        prefix = display.substring(0, 15);
+//                        suffix = display.substring(15);
+//                    }
+//
+//                    if (!suffix.startsWith("§")) {
+//                        suffix = ChatColor.getLastColors(prefix) + suffix;
+//                    }
+//                }
+//
+//                Object scoreboardPacket = SCOREBOARD_TEAM_PACKET_CONSTRUCTOR.newInstance();
+//
+//                SCOREBOARD_TEAM_PACKET_INTS[1].set(scoreboardPacket, scoreboardAction);
+//                SCOREBOARD_TEAM_PACKET_STRINGS[0].set(scoreboardPacket, entry.getNumberName());
+//                SCOREBOARD_TEAM_PACKET_STRINGS[1].set(scoreboardPacket, entry.getNumberName());
+//                SCOREBOARD_TEAM_PACKET_STRINGS[2].set(scoreboardPacket, prefix);
+//                SCOREBOARD_TEAM_PACKET_STRINGS[3].set(scoreboardPacket, suffix);
+//
+//                if (scoreboardAction == 0) {
+//                    SCOREBOARD_TEAM_NAMES.set(scoreboardPacket, Collections.singletonList(entry.getProfileName()));
+//                }
+//
+//                packets.add(scoreboardPacket);
+//            }
+//        } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+//            throw new RuntimeException(e);
+//        }
     }
 
     private List<Object> getInfoPacketEntries(List<TablistEntry> entries) {

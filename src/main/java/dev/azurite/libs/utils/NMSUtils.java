@@ -5,7 +5,6 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import dev.azurite.libs.modules.tablist.skin.TablistSkin;
-import dev.azurite.libs.modules.versions.SupportedVersion;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -24,7 +23,6 @@ import java.util.function.Predicate;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class NMSUtils {
 
-    public static final SupportedVersion SUPPORTED_VERSION;
     public static final String BUKKIT_CLASS_PATH;
     public static final String NMS_CLASS_PATH;
     public static final boolean MODERN_PACKAGING;
@@ -38,6 +36,8 @@ public class NMSUtils {
     public static final Class<?> NETTY_CHANNEL_CLASS;
     public static final Class<?> GAME_PROFILE_CLASS;
     public static final Class<?> PROPERTY_MAP_CLASS;
+    public static final Class<?> PROPERTY_CLASS;
+    public static final Class<?> BASE_COMPONENT_CLASS;
 
     public static final Constructor<?> GAME_PROFILE_CONSTRUCTOR;
     public static final Constructor<?> PROPERTY_MAP_CONSTRUCTOR;
@@ -51,12 +51,13 @@ public class NMSUtils {
     public static final Field NETWORK_MANAGER_FIELD;
     public static final Field CHANNEL_FIELD;
     public static final Field PROPERTY_MAP_FIELD;
+    public static final Field PROPERTY_VALUE_FIELD;
+    public static final Field PROPERTY_SIGNATURE_FIELD;
 
     static {
         try {
 
             Class<?> MODERN_NMS_CLASS = findClass("net.minecraft.server.Main");
-            SUPPORTED_VERSION = SupportedVersion.getSupportedVersion();
             BUKKIT_CLASS_PATH = Bukkit.getServer().getClass().getPackage().getName();
             NMS_CLASS_PATH = MODERN_NMS_CLASS != null ? "net.minecraft" : "net.minecraft.server." + BUKKIT_CLASS_PATH.substring(BUKKIT_CLASS_PATH.lastIndexOf('.') + 1);
             MODERN_PACKAGING = MODERN_NMS_CLASS != null;
@@ -70,6 +71,7 @@ public class NMSUtils {
             NETTY_CHANNEL_CLASS = getNMSUtilClass("io.netty.channel.Channel");
             GAME_PROFILE_CLASS = getNMSUtilClass("com.mojang.authlib.GameProfile");
             PROPERTY_MAP_CLASS = getNMSUtilClass("com.mojang.authlib.properties.PropertyMap");
+            PROPERTY_CLASS = getNMSUtilClass("com.mojang.authlib.properties.Property");
 
             GAME_PROFILE_CONSTRUCTOR = GAME_PROFILE_CLASS.getConstructors()[0];
             PROPERTY_MAP_CONSTRUCTOR = PROPERTY_MAP_CLASS.getConstructors()[0];
@@ -83,8 +85,11 @@ public class NMSUtils {
             NETWORK_MANAGER_FIELD = streamFieldsFindFirst(PLAYER_CONNECTION_CLASS, field -> field.getType() == NETWORK_MANAGER_CLASS, true, true);
             CHANNEL_FIELD = streamFieldsFindFirst(NETWORK_MANAGER_CLASS, field -> field.getType() == NETTY_CHANNEL_CLASS, true, true);
             PROPERTY_MAP_FIELD = streamFieldsFindFirst(GameProfile.class, field -> field.getType() == PropertyMap.class, false, true);
+            PROPERTY_VALUE_FIELD = streamFieldsFindFirst(PROPERTY_CLASS, field -> field.getName().equals("value"), false, true);
+            PROPERTY_SIGNATURE_FIELD = streamFieldsFindFirst(PROPERTY_CLASS, field -> field.getName().equals("signature"), false, true);
+            BASE_COMPONENT_CLASS = FROM_STRING_METHOD.getReturnType().getComponentType();
 
-        } catch (NoSuchMethodException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -122,6 +127,23 @@ public class NMSUtils {
             return (PropertyMap) PROPERTY_MAP_FIELD.get(gameProfile);
 
         } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String getPropertyValue(Property property) {
+        try {
+            return (String) PROPERTY_VALUE_FIELD.get(property);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String getPropertySignature(Property property) {
+        try {
+            Object signature = PROPERTY_SIGNATURE_FIELD.get(property);
+            return signature != null ? (String) signature : null;
+        } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
@@ -230,6 +252,10 @@ public class NMSUtils {
 
     public static Method streamMethodsFindFirst(Class<?> clazz, Predicate<Method> predicate, boolean inheritedMethods, boolean accessible) {
         return Arrays.stream(inheritedMethods ? findAllInheritedMethods(clazz) : clazz.getDeclaredMethods()).filter(predicate).peek(method -> method.setAccessible(accessible)).findFirst().orElse(null);
+    }
+
+    public static Constructor<?> streamFindConstructor(Class<?> clazz, Predicate<Constructor<?>> predicate, boolean accessible, Constructor<?> defaultConstructor) {
+        return Arrays.stream(clazz.getConstructors()).filter(predicate).peek(constructor -> constructor.setAccessible(accessible)).findFirst().orElse(defaultConstructor);
     }
 
     public static Field[] findAllInheritedFields(Class<?> clazz) {

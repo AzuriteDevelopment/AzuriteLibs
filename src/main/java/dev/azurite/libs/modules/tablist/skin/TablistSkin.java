@@ -50,7 +50,7 @@ public class TablistSkin {
         Property textures = propertyMap.get("textures").stream().findFirst().orElse(null);
 
         if (textures != null) {
-            return new TablistSkin(textures.getValue(), textures.getSignature());
+            return new TablistSkin(NMSUtils.getPropertyValue(textures), NMSUtils.getPropertySignature(textures));
         }
         return null;
     }
