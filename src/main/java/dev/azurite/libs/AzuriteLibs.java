@@ -7,13 +7,12 @@ import dev.azurite.libs.modules.netty.NettyModule;
 import dev.azurite.libs.modules.tablist.Tablist;
 import dev.azurite.libs.modules.tablist.TablistModule;
 import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
+import dev.azurite.libs.modules.tablist.skin.Skins;
 import dev.azurite.libs.modules.tablist.skin.TablistSkin;
 import lombok.Getter;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -64,10 +63,8 @@ public class AzuriteLibs extends ModuleLoader {
                     }
                 }
 
-                int random = Bukkit.getOnlinePlayers().size();
-                Player randomPlayer = new ArrayList<>(Bukkit.getOnlinePlayers()).get(ThreadLocalRandom.current().nextInt(random));
-
-                tablist.setEntry(0, 0, "&c" + player.getName() + " " + "&9" + player.getLocation().getBlockX() + ", " + player.getLocation().getBlockY() + ", " + player.getLocation().getBlockZ(), TablistSkin.getFromPlayer(randomPlayer));
+                TablistSkin skin = ThreadLocalRandom.current().nextBoolean() ? Skins.GRAY : Skins.LIGHT_GRAY;
+                tablist.setEntry(0, 0, "&c" + player.getName() + " " + "&9" + player.getLocation().getBlockX() + ", " + player.getLocation().getBlockY() + ", " + player.getLocation().getBlockZ(), skin);
             }
         });
     }

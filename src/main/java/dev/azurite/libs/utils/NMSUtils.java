@@ -247,8 +247,14 @@ public class NMSUtils {
     }
 
     public static Enum<?> findEnumConstant(Class<?> clazz, String name) {
-        Object object = Arrays.stream(clazz.getEnumConstants()).filter(e -> ((Enum<?>) e).name().equalsIgnoreCase(name)).findFirst().orElse(null);
-        return object != null ? (Enum<?>) object : null;
+        for (Object enumConstant : clazz.getEnumConstants()) {
+            Enum<?> enumValue = (Enum<?>) enumConstant;
+
+            if (enumValue.name().equalsIgnoreCase(name)) {
+                return enumValue;
+            }
+        }
+        return null;
     }
 
     public static Field[] streamFieldsFindAllType(Class<?> clazz, Class<?> type, boolean inheritedFields, boolean accessible) {

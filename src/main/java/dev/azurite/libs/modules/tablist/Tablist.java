@@ -4,9 +4,10 @@ import com.google.common.collect.Table;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
 import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
+import dev.azurite.libs.modules.tablist.entry.OldEntry;
 import dev.azurite.libs.modules.tablist.entry.TablistEntry;
 import dev.azurite.libs.modules.tablist.injector.TablistInjector;
-import dev.azurite.libs.modules.tablist.skin.DefaultSkins;
+import dev.azurite.libs.modules.tablist.skin.Skins;
 import dev.azurite.libs.modules.tablist.skin.TablistSkin;
 import dev.azurite.libs.utils.CC;
 import lombok.Getter;
@@ -38,7 +39,7 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
     public Tablist(TablistModule module, Player player) {
         super(module);
         this.player = player;
-        this.injector = new TablistInjector(module, this);
+        this.injector = new TablistInjector(module, this, player);
         this.entries = null;
         this.currentHeader = null;
         this.currentFooter = null;
@@ -51,7 +52,7 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
     }
 
     public void setEntry(int col, int row, String display, int ping) {
-        this.setEntry(col, row, display, ping, DefaultSkins.GRAY);
+        this.setEntry(col, row, display, ping, Skins.GRAY);
     }
 
     public void setEntry(int col, int row, String display, TablistSkin skin) {
@@ -60,9 +61,30 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
 
     public void setEntry(int col, int row, String display, int ping, TablistSkin skin) {
         TablistEntry entry = entries.get(col, row);
-        entry.setDisplay(CC.t(display));
-        entry.setPing(ping);
-        entry.setSkin(skin);
+        display = CC.t(display);
+
+        if (entry == null) {
+            entry = new TablistEntry(display, getInvisibleName(col, row), getNumberName(col, row), skin, ping);
+            entries.put(col, row, entry);
+
+        } else {
+            entry.setDisplay(display);
+            entry.setPing(ping);
+            entry.setSkin(skin);
+        }
+    }
+
+    public String getInvisibleName(int col, int row) {
+        StringBuilder builder = new StringBuilder("§" + col);
+
+        for (char c : String.valueOf(row).toCharArray()) {
+            builder.append("§").append(c);
+        }
+        return builder.toString();
+    }
+
+    public String getNumberName(int col, int row) {
+        return String.format("%016d", (col * 20) + row);
     }
 
     public void update() {
@@ -82,7 +104,7 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
 
         for (TablistEntry entry : entries.values()) {
             injector.sendTablistUpdate(player, entry);
-            entry.setOldValue(new TablistEntry(entry));
+            entry.setOldEntry(new OldEntry(entry));
         }
     }
 }

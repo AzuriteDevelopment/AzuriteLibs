@@ -1,9 +1,9 @@
 package dev.azurite.libs.modules.nametags.scoreboard;
 
-import dev.azurite.libs.modules.nametags.extra.CollisionRule;
-import dev.azurite.libs.modules.nametags.extra.NametagColor;
-import dev.azurite.libs.modules.nametags.extra.NametagVisibility;
-import dev.azurite.libs.modules.nametags.extra.TeamAction;
+import dev.azurite.libs.modules.nametags.enums.CollisionRule;
+import dev.azurite.libs.modules.nametags.enums.NametagColor;
+import dev.azurite.libs.modules.nametags.enums.NametagVisibility;
+import dev.azurite.libs.modules.nametags.enums.TeamAction;
 import dev.azurite.libs.modules.versions.utils.VersionUtils;
 import dev.azurite.libs.utils.NMSUtils;
 import dev.azurite.libs.utils.Pair;

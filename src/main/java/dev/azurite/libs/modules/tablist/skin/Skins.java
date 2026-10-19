@@ -5,7 +5,7 @@ package dev.azurite.libs.modules.tablist.skin;
  * Use or redistribution of source or file is
  * only permitted if given explicit permission.
  */
-public class DefaultSkins {
+public class Skins {
 
     public static final TablistSkin LIGHT_GRAY = new TablistSkin(
             "ewogICJ0aW1lc3RhbXAiIDogMTc1MzEyNjc2MjQ3NSwKICAicHJvZmlsZUlkIiA6ICJhZDEwM2FhODMzNWM0ZDA4YjNlZWI2ZDI2NjNkMzA0MSIsCiAgInByb2ZpbGVOYW1lIiA6ICJJY2hpaW5uIiwKICAic2lnbmF0dXJlUmVxdWlyZWQiIDogdHJ1ZSwKICAidGV4dHVyZXMiIDogewogICAgIlNLSU4iIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlL2Q4OTZmNzYxMTRjMjFhZGZkYzU4NTU4YWJlYjY5ZmE4Yzc3YjhjODNlMzllYWY4NDU2MDEwODM4ZGM3Y2VhZTkiLAogICAgICAibWV0YWRhdGEiIDogewogICAgICAgICJtb2RlbCIgOiAic2xpbSIKICAgICAgfQogICAgfQogIH0KfQ==",

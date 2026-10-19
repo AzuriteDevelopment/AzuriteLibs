@@ -1,4 +1,4 @@
-package dev.azurite.libs.modules.nametags.extra;
+package dev.azurite.libs.modules.nametags.enums;
 
 import lombok.Getter;
 

@@ -14,5 +14,4 @@ public class Nametag {
     public Nametag(Player player) {
         this.player = player;
     }
-
 }
