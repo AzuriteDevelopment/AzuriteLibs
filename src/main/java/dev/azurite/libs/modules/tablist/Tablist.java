@@ -76,12 +76,12 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
             if (!Arrays.equals(currentHeader, header) || !Arrays.equals(currentFooter, footer)) {
                 this.currentHeader = header;
                 this.currentFooter = footer;
-                injector.sendHeaderFooter(String.join("\n", CC.t(header)), String.join("\n", CC.t(footer)));
+                injector.sendHeaderFooter(player, String.join("\n", CC.t(header)), String.join("\n", CC.t(footer)));
             }
         }
 
         for (TablistEntry entry : entries.values()) {
-            injector.sendTablistUpdate(entry);
+            injector.sendTablistUpdate(player, entry);
             entry.setOldValue(new TablistEntry(entry));
         }
     }

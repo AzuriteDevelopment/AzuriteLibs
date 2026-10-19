@@ -26,32 +26,32 @@ public class AzuriteScoreboard {
 
     public void delete() {
         for (AzuriteTeam team : teams.values()) {
-            team.sendUpdate(TeamAction.REMOVE_TEAM);
+            team.sendUpdate(player, TeamAction.REMOVE_TEAM);
         }
         teams.clear();
     }
 
     public void addAndCreateTeam(String target, String team, String prefix,
-                                 String suffix, CollisionRule collisionRule, NametagColor nametagColor,
-                                 NametagVisibility nametagVisibility, boolean friendlyInvis, boolean friendlyFire) {
+                                 String suffix, NametagVisibility nametagVisibility, CollisionRule collisionRule,
+                                 NametagColor nametagColor, boolean friendlyInvis, boolean friendlyFire) {
 
         AzuriteTeam azuriteTeam = teams.get(team);
 
         // Create Team
         if (azuriteTeam == null) {
             azuriteTeam = new AzuriteTeam(team, prefix, suffix, collisionRule, nametagVisibility, nametagColor, friendlyInvis, friendlyFire, target);
-            azuriteTeam.sendUpdate(TeamAction.CREATE_TEAM);
+            azuriteTeam.sendUpdate(player, TeamAction.CREATE_TEAM);
             teams.put(team, azuriteTeam);
         }
 
         // Update team
         if (azuriteTeam.updateValues(prefix, suffix, collisionRule, nametagVisibility, nametagColor, friendlyInvis, friendlyFire)) {
-            azuriteTeam.sendUpdate(TeamAction.UPDATE_TEAM);
+            azuriteTeam.sendUpdate(player, TeamAction.UPDATE_TEAM);
         }
 
         // Add players
         if (azuriteTeam.addPlayer(target)) {
-            azuriteTeam.sendUpdate(TeamAction.ADD_PLAYERS);
+            azuriteTeam.sendUpdate(player, TeamAction.ADD_PLAYERS);
         }
     }
 }

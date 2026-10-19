@@ -79,12 +79,24 @@
                 <version>3.6.1</version>
                 <executions>
                     <execution>
+                        <id>1.8</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <configuration>
                             <outputFile>C:\Users\keano\Desktop\test\plugins\test.jar</outputFile>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>26.2</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <outputFile>C:\Users\keano\Desktop\1.16\plugins\test.jar</outputFile>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                         </configuration>
                     </execution>

@@ -2,6 +2,7 @@ package dev.azurite.libs;
 
 import dev.azurite.libs.loader.ModuleLoader;
 import dev.azurite.libs.modules.commands.CommandModule;
+import dev.azurite.libs.modules.nametags.NametagModule;
 import dev.azurite.libs.modules.netty.NettyModule;
 import dev.azurite.libs.modules.tablist.Tablist;
 import dev.azurite.libs.modules.tablist.TablistModule;
@@ -25,12 +26,14 @@ public class AzuriteLibs extends ModuleLoader {
 
     private final NettyModule nettyModule;
     private final TablistModule tablistModule;
+    private final NametagModule nametagModule;
     private final CommandModule commandModule;
 
     public AzuriteLibs(JavaPlugin plugin) {
         super(plugin);
         this.nettyModule = new NettyModule(this);
         this.tablistModule = new TablistModule(this);
+        this.nametagModule = new NametagModule(this);
         this.commandModule = new CommandModule(this);
 
         tablistModule.setTickingTime(500L);

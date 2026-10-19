@@ -228,6 +228,14 @@ public class NMSUtils {
         return null;
     }
 
+    public static Constructor<?> getConstructorOrNull(Class<?> clazz, Class<?>... parameterTypes) {
+        try {
+            return clazz.getDeclaredConstructor(parameterTypes);
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
     public static EnumSet<?> getEnumSet(Class<?> enumClass, Enum<?>... enums) {
         EnumSet actions = EnumSet.noneOf((Class) enumClass);
         actions.addAll(Arrays.asList(enums));
@@ -236,6 +244,11 @@ public class NMSUtils {
 
     public static Enum<?> findEnumConstant(Class<?> clazz, int index) {
         return (Enum<?>) clazz.getEnumConstants()[index];
+    }
+
+    public static Enum<?> findEnumConstant(Class<?> clazz, String name) {
+        Object object = Arrays.stream(clazz.getEnumConstants()).filter(e -> ((Enum<?>) e).name().equalsIgnoreCase(name)).findFirst().orElse(null);
+        return object != null ? (Enum<?>) object : null;
     }
 
     public static Field[] streamFieldsFindAllType(Class<?> clazz, Class<?> type, boolean inheritedFields, boolean accessible) {
@@ -255,7 +268,10 @@ public class NMSUtils {
     }
 
     public static Constructor<?> streamFindConstructor(Class<?> clazz, Predicate<Constructor<?>> predicate, boolean accessible, Constructor<?> defaultConstructor) {
-        return Arrays.stream(clazz.getConstructors()).filter(predicate).peek(constructor -> constructor.setAccessible(accessible)).findFirst().orElse(defaultConstructor);
+        return Arrays.stream(clazz.getConstructors()).filter(predicate).peek(constructor -> constructor.setAccessible(accessible)).findFirst().orElseGet(() -> {
+            defaultConstructor.setAccessible(accessible);
+            return defaultConstructor;
+        });
     }
 
     public static Field[] findAllInheritedFields(Class<?> clazz) {
