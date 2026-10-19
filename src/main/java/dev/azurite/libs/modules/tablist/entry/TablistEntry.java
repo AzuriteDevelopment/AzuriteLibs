@@ -17,17 +17,22 @@ import java.util.UUID;
 public class TablistEntry extends OldEntry {
 
     private UUID uuid;
+    private GameProfile profile;
+
     private String profileName;
     private String numberName;
-    private GameProfile profile;
+
     private OldEntry oldEntry;
 
     public TablistEntry(String display, String profileName, String numberName, TablistSkin skin, int ping) {
         super(display, skin, ping);
+
         this.uuid = null;
         this.profile = null;
+
         this.profileName = profileName;
         this.numberName = numberName;
+
         this.oldEntry = null;
     }
 }

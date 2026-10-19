@@ -16,8 +16,7 @@ public enum PlayerInfoAction {
     UPDATE_LATENCY(enums -> enums >= 6 ? 4 : 2),
     UPDATE_DISPLAY_NAME(enums -> enums >= 6 ? 5 : 3),
     REMOVE_PLAYER(enums -> enums >= 6 ? -1 : 4),
-    UPDATE_LISTED(enums -> enums >= 6 ? 3 : -1),
-    UPDATE_LIST_ORDER(enums -> enums > 6 ? 6 : -1);
+    UPDATE_LISTED(enums -> enums >= 6 ? 3 : -1);
 
     private final UnaryOperator<Integer> index;
 

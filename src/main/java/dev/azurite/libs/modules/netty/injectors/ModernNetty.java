@@ -20,7 +20,6 @@ public class ModernNetty extends Netty {
 
         // Not initialized yet
         if (pipeline.get("packet_handler") == null) {
-            System.out.println("not init");
             return;
         }
 
