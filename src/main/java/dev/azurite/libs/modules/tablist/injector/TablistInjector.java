@@ -19,6 +19,7 @@ import dev.azurite.libs.modules.tablist.skin.Skins;
 import dev.azurite.libs.modules.versions.utils.VersionUtils;
 import dev.azurite.libs.utils.NMSUtils;
 import dev.azurite.libs.utils.Pair;
+import lombok.Getter;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
  * only permitted if given explicit permission.
  */
 @SuppressWarnings("UnstableApiUsage")
+@Getter
 public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> implements NettyListener {
 
     private static final Class<?> PLAYER_INFO_UPDATE_CLASS;
@@ -94,10 +96,10 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
     private final AzuriteScoreboard scoreboard;
     private int version;
 
-    public TablistInjector(TablistModule module, Tablist tablist, Player player) {
+    public TablistInjector(TablistModule module, Tablist tablist) {
         super(module);
         this.tablist = tablist;
-        this.scoreboard = new AzuriteScoreboard(player);
+        this.scoreboard = new AzuriteScoreboard();
         this.version = -1;
     }
 
@@ -246,7 +248,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
             }
 
             for (PlayerInfoAction action : actions) {
-                this.handleTeamPackets(entries, action, version1_7);
+                this.handleTeamPackets(player, entries, action, version1_7);
             }
 
         } catch (Exception e) {
@@ -254,7 +256,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
         }
     }
 
-    private void handleTeamPackets(List<TablistEntry> entries, PlayerInfoAction action, boolean version1_7) {
+    private void handleTeamPackets(Player player, List<TablistEntry> entries, PlayerInfoAction action, boolean version1_7) {
         boolean sendPacket = action == PlayerInfoAction.ADD_PLAYER || (version1_7 && action == PlayerInfoAction.UPDATE_DISPLAY_NAME);
 
         if (sendPacket) {
@@ -268,7 +270,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
                     suffix = split.getRight();
                 }
 
-                scoreboard.addAndCreateTeam(entry.getProfileName(), entry.getNumberName(), prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.NEVER, NametagColor.NONE, false, false);
+                scoreboard.addAndCreateTeam(player, entry.getProfileName(), entry.getNumberName(), prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.NEVER, NametagColor.NONE, false, false);
             }
         }
     }

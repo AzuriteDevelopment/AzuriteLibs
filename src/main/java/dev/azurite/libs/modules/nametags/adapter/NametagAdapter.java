@@ -1,5 +1,8 @@
 package dev.azurite.libs.modules.nametags.adapter;
 
+import dev.azurite.libs.modules.nametags.Nametag;
+import org.bukkit.entity.Player;
+
 /**
  * Copyright (c) 2026. Keano
  * Use or redistribution of source or file is
@@ -7,7 +10,6 @@ package dev.azurite.libs.modules.nametags.adapter;
  */
 public interface NametagAdapter {
 
-    void createTeam(String name, String prefix, String suffix);
-
+    void updateNametag(Nametag nametag, Player viewer, Player target);
 
 }

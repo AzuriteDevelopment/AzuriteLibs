@@ -8,6 +8,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerKickEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 /**
  * Copyright (c) 2026. Keano
@@ -26,8 +28,26 @@ public class TablistListener extends SubModule<AzuriteLibs, TablistModule> {
 
         if (module.isEnabled()) {
             Tablist tablist = new Tablist(module, player);
-            module.getTablists().put(player.getUniqueId(), tablist);
+            module.getCachedData().put(player.getUniqueId(), tablist);
             moduleLoader.getNettyModule().tryInjectListener(player, tablist.getInjector(), "azurite_tablist", false);
+        }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        this.handleQuit(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onKick(PlayerKickEvent e) {
+        this.handleQuit(e.getPlayer());
+    }
+
+    private void handleQuit(Player player) {
+        Tablist tablist = module.getCachedData().remove(player.getUniqueId());
+
+        if (tablist != null) {
+            tablist.getEntries().clear();
         }
     }
 }

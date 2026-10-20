@@ -39,7 +39,7 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
     public Tablist(TablistModule module, Player player) {
         super(module);
         this.player = player;
-        this.injector = new TablistInjector(module, this, player);
+        this.injector = new TablistInjector(module, this);
         this.entries = null;
         this.currentHeader = null;
         this.currentFooter = null;

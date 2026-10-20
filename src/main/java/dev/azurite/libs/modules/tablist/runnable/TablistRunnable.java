@@ -1,4 +1,4 @@
-package dev.azurite.libs.modules.tablist.thread;
+package dev.azurite.libs.modules.tablist.runnable;
 
 import dev.azurite.libs.modules.tablist.Tablist;
 import dev.azurite.libs.modules.tablist.TablistModule;
@@ -8,17 +8,17 @@ import dev.azurite.libs.modules.tablist.TablistModule;
  * Use or redistribution of source or file is
  * only permitted if given explicit permission.
  */
-public class TablistThread extends Thread {
+public class TablistRunnable extends Thread {
 
     private final TablistModule module;
 
-    public TablistThread(TablistModule module) {
+    public TablistRunnable(TablistModule module) {
         this.module = module;
     }
 
     @Override
     public void run() {
-        for (Tablist tablist : module.getTablists().values()) {
+        for (Tablist tablist : module.getCachedData().values()) {
             if (tablist.isInitialized()) {
                 tablist.update();
             }

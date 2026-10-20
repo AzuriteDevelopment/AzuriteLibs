@@ -4,6 +4,7 @@ import dev.azurite.libs.modules.nametags.enums.CollisionRule;
 import dev.azurite.libs.modules.nametags.enums.NametagColor;
 import dev.azurite.libs.modules.nametags.enums.NametagVisibility;
 import dev.azurite.libs.modules.nametags.enums.TeamAction;
+import lombok.Getter;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -14,28 +15,27 @@ import java.util.concurrent.ConcurrentHashMap;
  * Use or redistribution of source or file is
  * only permitted if given explicit permission.
  */
+@Getter
 public class AzuriteScoreboard {
 
-    private final Player player;
     private final Map<String, AzuriteTeam> teams;
 
-    public AzuriteScoreboard(Player player) {
-        this.player = player;
+    public AzuriteScoreboard() {
         this.teams = new ConcurrentHashMap<>();
     }
 
-    public void delete() {
-        for (AzuriteTeam team : teams.values()) {
-            team.sendUpdate(player, TeamAction.REMOVE_TEAM);
-        }
-        teams.clear();
-    }
-
-    public void addAndCreateTeam(String target, String team, String prefix,
+    public void addAndCreateTeam(Player player, String target, String team, String prefix,
                                  String suffix, NametagVisibility nametagVisibility, CollisionRule collisionRule,
                                  NametagColor nametagColor, boolean friendlyInvis, boolean friendlyFire) {
 
         AzuriteTeam azuriteTeam = teams.get(team);
+
+        // Remove from old teams
+        for (AzuriteTeam other : teams.values()) {
+            if (!other.equals(azuriteTeam)) {
+                other.getPlayers().remove(target);
+            }
+        }
 
         // Create Team
         if (azuriteTeam == null) {
