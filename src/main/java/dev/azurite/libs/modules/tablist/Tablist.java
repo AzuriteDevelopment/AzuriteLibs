@@ -76,7 +76,8 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
 
     public void update() {
         TablistAdapter adapter = module.getAdapter();
-        int validColumns = adapter.getColumns(player, injector.getVersion()) - 1;
+        int version = injector.getVersion();
+        int validColumns = adapter.getColumns(player, version) - 1;
 
         adapter.updateEntries(player, this);
 
@@ -95,20 +96,23 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
             for (int col = 0; col < maxColumns; col++) {
                 TablistEntry entry = entries.get(col, row);
 
-                if (col > validColumns) {
-                    if (entry.isRemoved()) {
+                // Don't allow dynamic tablist on 1.7 as it'll break client order
+                if (version != 5) {
+                    if (col > validColumns) {
+                        if (entry.isRemoved()) {
+                            continue;
+                        }
+
+                        injector.sendTablistRemove(player, entry);
+                        entry.setRemoved(true);
+                        entry.setOldEntry(null);
                         continue;
                     }
 
-                    injector.sendTablistRemove(player, entry);
-                    entry.setRemoved(true);
-                    entry.setOldEntry(null);
-                    continue;
-                }
-
-                if (entry.isRemoved()) {
-                    injector.sendTablistAdd(player, entry);
-                    entry.setRemoved(false);
+                    if (entry.isRemoved()) {
+                        injector.sendTablistAdd(player, entry);
+                        entry.setRemoved(false);
+                    }
                 }
 
                 injector.sendTablistUpdate(player, entry);
