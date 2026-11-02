@@ -45,7 +45,7 @@ public class BaseCommand extends SubModule<AzuriteLibs, CommandModule> {
 
     public boolean cannotUseCommand(CommandSender sender, boolean sendMessage) {
         if (!permission.isEmpty() && !sender.hasPermission(permission)) {
-            if (sendMessage) sender.sendMessage(module.getNoPermissionMessage());
+            if (sendMessage) sender.sendMessage(module.getSettings().getNoPermissionMessage());
             return true;
         }
 

@@ -17,37 +17,40 @@ import java.util.concurrent.*;
  */
 @Getter
 @Setter
-public abstract class TickingModule<L extends ModuleLoader, S, A> extends Module<L> {
+public abstract class TickingModule<L extends ModuleLoader, C, S, A> extends Module<L> {
 
-    protected Map<UUID, S> cachedData;
+    protected Map<UUID, C> cachedData;
+    protected S settings;
     protected A adapter;
 
     protected ScheduledExecutorService service;
     protected Future<?> serviceSchedule;
 
+    protected boolean enabled;
+
     public TickingModule(L loader, String threadName) {
         super(loader);
         this.cachedData = new ConcurrentHashMap<>();
-        this.adapter = null;
         this.service = Executors.newScheduledThreadPool(1, new NamedThreadFactory(threadName));
+        this.settings = null;
+        this.adapter = null;
         this.serviceSchedule = null;
+        this.enabled = false;
     }
 
-    public abstract Runnable getRunnable();
+    public abstract void enable(S settings);
 
-    public boolean isEnabled() {
-        return adapter != null;
-    }
-
-    public S getCachedData(UUID uuid) {
+    public C getCachedData(UUID uuid) {
         return cachedData.get(uuid);
     }
 
-    public void startOrSetTickingTime(long millis) {
+    public void enableAndStartTicking(long millis, Runnable runnable) {
         if (serviceSchedule != null) {
             serviceSchedule.cancel(true);
         }
-        Runnable runnable = getRunnable();
-        this.serviceSchedule = service.scheduleAtFixedRate(runnable, 0L, millis, TimeUnit.MILLISECONDS);
+        if (millis != 0 && adapter != null) {
+            this.serviceSchedule = service.scheduleAtFixedRate(runnable, 0L, millis, TimeUnit.MILLISECONDS);
+            this.enabled = true;
+        }
     }
 }

@@ -64,7 +64,7 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
         display = CC.t(display);
 
         if (entry == null) {
-            entry = new TablistEntry(display, getInvisibleName(col, row), getNumberName(col, row), skin, ping);
+            entry = new TablistEntry(display, skin, col, row, ping);
             entries.put(col, row, entry);
 
         } else {
@@ -74,21 +74,10 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
         }
     }
 
-    public String getInvisibleName(int col, int row) {
-        StringBuilder builder = new StringBuilder("§" + col);
-
-        for (char c : String.valueOf(row).toCharArray()) {
-            builder.append("§").append(c);
-        }
-        return builder.toString();
-    }
-
-    public String getNumberName(int col, int row) {
-        return String.format("%016d", (col * 20) + row);
-    }
-
     public void update() {
         TablistAdapter adapter = module.getAdapter();
+        int validColumns = adapter.getColumns(player, injector.getVersion()) - 1;
+
         adapter.updateEntries(player, this);
 
         if (maxColumns == 4) {
@@ -102,9 +91,29 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
             }
         }
 
-        for (TablistEntry entry : entries.values()) {
-            injector.sendTablistUpdate(player, entry);
-            entry.setOldEntry(new OldEntry(entry));
+        for (int row = 0; row < 20; row++) {
+            for (int col = 0; col < maxColumns; col++) {
+                TablistEntry entry = entries.get(col, row);
+
+                if (col > validColumns) {
+                    if (entry.isRemoved()) {
+                        continue;
+                    }
+
+                    injector.sendTablistRemove(player, entry);
+                    entry.setRemoved(true);
+                    entry.setOldEntry(null);
+                    continue;
+                }
+
+                if (entry.isRemoved()) {
+                    injector.sendTablistAdd(player, entry);
+                    entry.setRemoved(false);
+                }
+
+                injector.sendTablistUpdate(player, entry);
+                entry.setOldEntry(new OldEntry(entry));
+            }
         }
     }
 }

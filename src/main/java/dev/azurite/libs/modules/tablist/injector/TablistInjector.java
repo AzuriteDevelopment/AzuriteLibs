@@ -20,6 +20,7 @@ import dev.azurite.libs.modules.versions.utils.VersionUtils;
 import dev.azurite.libs.utils.NMSUtils;
 import dev.azurite.libs.utils.Pair;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
@@ -53,11 +54,17 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
 
     private static final Enum<?> VALID_GAME_MODE_TYPE;
 
+    private static final Field INFO_UPDATE_ACTIONS_FIELD;
     private static final Field INFO_UPDATE_ENTRIES_FIELD;
+    private static final Field INFO_ENTRY_UUID_FIELD;
     private static final Field HEADER_PACKET_FIELD;
     private static final Field FOOTER_PACKET_FIELD;
 
     private static final PlayerInfoAction[] CREATION_ACTIONS;
+
+    private static final boolean LISTED_PRESENT;
+    private static final boolean SHOW_HAT_PRESENT;
+    private static final boolean LIST_ORDER_PRESENT;
 
     static {
         try {
@@ -80,12 +87,19 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
             VALID_GAME_MODE_TYPE = NMSUtils.findEnumConstant(GAME_MODE_CLASS, 1);
 
             // Fields
+            INFO_UPDATE_ACTIONS_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_UPDATE_CLASS, field -> field.getType() == EnumSet.class || field.getType() == PLAYER_INFO_ACTION_CLASS, false, true);
             INFO_UPDATE_ENTRIES_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_UPDATE_CLASS, field -> field.getType() == List.class, false, true);
+            INFO_ENTRY_UUID_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_ENTRY_CLASS, field -> field.getType() == UUID.class, false, true);
             HEADER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 0);
             FOOTER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 1);
 
             // Actions
             CREATION_ACTIONS = new PlayerInfoAction[]{PlayerInfoAction.ADD_PLAYER, PlayerInfoAction.UPDATE_LATENCY, PlayerInfoAction.UPDATE_DISPLAY_NAME, PlayerInfoAction.UPDATE_LISTED};
+
+            // Booleans
+            LISTED_PRESENT = PlayerInfoAction.UPDATE_LISTED.getEnumObject(PLAYER_INFO_ACTION_CLASS) != null;
+            SHOW_HAT_PRESENT = PlayerInfoAction.UPDATE_HAT.getEnumObject(PLAYER_INFO_ACTION_CLASS) != null;
+            LIST_ORDER_PRESENT = PlayerInfoAction.UPDATE_LIST_ORDER.getEnumObject(PLAYER_INFO_ACTION_CLASS) != null;
 
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
@@ -104,7 +118,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
     }
 
     @Override
-    public boolean write(Player player, Object packet) {
+    public boolean preWrite(Player player, Object packet) {
         if (packet.getClass() == PLAYER_INFO_UPDATE_CLASS) {
             if (!tablist.isInitialized()) {
                 tablist.setInitialized(true);
@@ -114,22 +128,61 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
         return true;
     }
 
-    public void sendTablistUpdate(Player player, TablistEntry entry) {
-        OldEntry oldEntry = entry.getOldEntry();
+    @Override
+    public void postWrite(Player player, Object packet) {
+        try {
+            if (LISTED_PRESENT && module.getSettings().isModernHideRealPlayers() && packet.getClass() == PLAYER_INFO_UPDATE_CLASS) {
+                EnumSet<?> enumSet = (EnumSet<?>) INFO_UPDATE_ACTIONS_FIELD.get(packet);
+                Enum<?> addAction = PlayerInfoAction.ADD_PLAYER.getEnumObject(PLAYER_INFO_ACTION_CLASS);
 
-        if (!oldEntry.getDisplay().equals(entry.getDisplay())) {
+                if (enumSet.contains(addAction)) {
+                    enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_CLASS, PlayerInfoAction.UPDATE_LISTED.getEnumObject(PLAYER_INFO_ACTION_CLASS));
+
+                    List<?> entries = (List<?>) INFO_UPDATE_ENTRIES_FIELD.get(packet);
+                    List<Object> newEntries = new ArrayList<>();
+                    boolean sendPacket = false;
+
+                    for (Object entry : entries) {
+                        UUID uuid = (UUID) INFO_ENTRY_UUID_FIELD.get(entry);
+
+                        if (Bukkit.getPlayer(uuid) != null) {
+                            sendPacket = true;
+                            newEntries.add(createInfoPacketEntry(uuid, null, null, 0, false));
+                        }
+                    }
+
+                    if (sendPacket) {
+                        NMSUtils.sendPacket(player, PLAYER_INFO_UPDATE_CONSTRUCTOR.newInstance(enumSet, newEntries));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void sendTablistUpdate(Player player, TablistEntry entry) {
+        if (entry.shouldUpdateDisplay()) {
             this.sendInfoPacket(player, entry, PlayerInfoAction.UPDATE_DISPLAY_NAME);
         }
 
-        if (oldEntry.getPing() != entry.getPing()) {
+        if (entry.shouldUpdatePing()) {
             this.sendInfoPacket(player, entry, PlayerInfoAction.UPDATE_LATENCY);
         }
 
-        if (version != 5 && !oldEntry.getSkin().equals(entry.getSkin())) {
+        if (entry.shouldUpdateSkin() && version != 5) {
             this.sendInfoPacket(player, entry, PlayerInfoAction.REMOVE_PLAYER);
             entry.setProfile(NMSUtils.createProfile(entry.getUuid(), entry.getProfileName(), entry.getSkin()));
             this.sendInfoPackets(player, Collections.singletonList(entry), CREATION_ACTIONS);
         }
+    }
+
+    public void sendTablistAdd(Player player, TablistEntry entry) {
+        this.sendInfoPacket(player, entry, CREATION_ACTIONS);
+    }
+
+    public void sendTablistRemove(Player player, TablistEntry entry) {
+        this.sendInfoPacket(player, entry, PlayerInfoAction.REMOVE_PLAYER);
     }
 
     public void sendHeaderFooter(Player player, String header, String footer) {
@@ -188,21 +241,19 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
         for (int row = 0; row < 20; row++) {
             for (int col = 0; col < maxColumns; col++) {
                 TablistEntry entry = entries.get(row, col);
+                UUID uuid = UUID.randomUUID();
 
                 if (entry == null) {
-                    entry = new TablistEntry("", tablist.getInvisibleName(col, row), tablist.getNumberName(col, row), Skins.GRAY, -1);
+                    entry = new TablistEntry("", Skins.GRAY, col, row, -1);
                     entries.put(col, row, entry);
                 }
 
+                entry.setUuid(uuid);
+                entry.setProfile(NMSUtils.createProfile(uuid, entry.getProfileName(), entry.getSkin()));
+                entry.setOldEntry(new OldEntry(entry));
+
                 sendingOrder.add(entry);
             }
-        }
-
-        for (TablistEntry entry : sendingOrder) {
-            UUID uuid = UUID.randomUUID();
-            entry.setUuid(uuid);
-            entry.setProfile(NMSUtils.createProfile(uuid, entry.getProfileName(), entry.getSkin()));
-            entry.setOldEntry(new OldEntry(entry));
         }
     }
 
@@ -215,31 +266,45 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
 
             boolean version1_7 = version == 5;
 
-            if (PLAYER_INFO_REMOVE_CLASS != null) {
+            if (PLAYER_INFO_UPDATE_CONSTRUCTOR.getParameterTypes()[0] == EnumSet.class) {
                 for (PlayerInfoAction action : actions) {
+                    if (action == PlayerInfoAction.ADD_PLAYER) {
+                        this.handleTeamPackets(player, entries, false);
+                    }
+
                     if (action == PlayerInfoAction.REMOVE_PLAYER) {
                         NMSUtils.sendPacket(player, PLAYER_INFO_REMOVE_CONSTRUCTOR.newInstance(entries
                                 .stream()
                                 .map(TablistEntry::getUuid)
                                 .collect(Collectors.toList())));
-                        break;
+                        return;
                     }
                 }
 
                 EnumSet<?> enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_CLASS, Arrays.stream(actions)
                         .filter(action -> action != PlayerInfoAction.REMOVE_PLAYER)
-                        .filter(action -> !version1_7 || action != PlayerInfoAction.UPDATE_DISPLAY_NAME)
                         .map(action -> action.getEnumObject(PLAYER_INFO_ACTION_CLASS))
                         .toArray(Enum[]::new));
 
-                NMSUtils.sendPacket(player, PLAYER_INFO_UPDATE_CONSTRUCTOR.newInstance(enumSet, getInfoPacketEntries(entries)));
+                if (!enumSet.isEmpty()) {
+                    NMSUtils.sendPacket(player, PLAYER_INFO_UPDATE_CONSTRUCTOR.newInstance(enumSet, getInfoPacketEntries(entries)));
+                }
 
             } else {
                 for (PlayerInfoAction action : actions) {
                     Enum<?> enumClass = action.getEnumObject(PLAYER_INFO_ACTION_CLASS);
 
-                    if (version1_7 && action == PlayerInfoAction.UPDATE_DISPLAY_NAME) continue;
-                    if (enumClass == null) continue;
+                    if (enumClass == null)
+                        continue;
+
+                    if (version1_7 && action == PlayerInfoAction.UPDATE_DISPLAY_NAME) {
+                        this.handleTeamPackets(player, entries, true);
+                        continue;
+                    }
+
+                    if (action == PlayerInfoAction.ADD_PLAYER) {
+                        this.handleTeamPackets(player, entries, false);
+                    }
 
                     Object packet = PLAYER_INFO_UPDATE_CONSTRUCTOR.newInstance(enumClass, Collections.emptyList());
                     INFO_UPDATE_ENTRIES_FIELD.set(packet, getInfoPacketEntries(entries));
@@ -247,31 +312,23 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
                 }
             }
 
-            for (PlayerInfoAction action : actions) {
-                this.handleTeamPackets(player, entries, action, version1_7);
-            }
-
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void handleTeamPackets(Player player, List<TablistEntry> entries, PlayerInfoAction action, boolean version1_7) {
-        boolean sendPacket = action == PlayerInfoAction.ADD_PLAYER || (version1_7 && action == PlayerInfoAction.UPDATE_DISPLAY_NAME);
+    private void handleTeamPackets(Player player, List<TablistEntry> entries, boolean display) {
+        for (TablistEntry entry : entries) {
+            String prefix = "";
+            String suffix = "";
 
-        if (sendPacket) {
-            for (TablistEntry entry : entries) {
-                String prefix = "";
-                String suffix = "";
-
-                if (version1_7) {
-                    Pair<String, String> split = splitPrefixSuffixLegacy(entry.getDisplay());
-                    prefix = split.getLeft();
-                    suffix = split.getRight();
-                }
-
-                scoreboard.addAndCreateTeam(player, entry.getProfileName(), entry.getNumberName(), prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.NEVER, NametagColor.NONE, false, false);
+            if (display) {
+                Pair<String, String> split = splitPrefixSuffixLegacy(entry.getDisplay());
+                prefix = split.getLeft();
+                suffix = split.getRight();
             }
+
+            scoreboard.addAndCreateTeam(player, entry.getProfileName(), entry.getTeamName(), prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.NEVER, NametagColor.NONE, false, false);
         }
     }
 
@@ -305,13 +362,47 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
     }
 
     private Object getInfoPacketEntry(TablistEntry entry) {
+        return createInfoPacketEntry(entry.getUuid(), entry.getProfile(), entry.getDisplay(), entry.getPing(), true);
+    }
+
+    private Object createInfoPacketEntry(UUID uuid, GameProfile profile, String display, int ping, boolean listed) {
         try {
 
-            GameProfile profile = entry.getProfile();
-            int ping = entry.getPing();
-            return PLAYER_INFO_REMOVE_CLASS != null ?
-                    PLAYER_INFO_ENTRY_CONSTRUCTOR.newInstance(entry.getUuid(), profile, true, ping, VALID_GAME_MODE_TYPE, NMSUtils.stringToComponent(entry.getDisplay()), false, 0, null) :
-                    PLAYER_INFO_ENTRY_CONSTRUCTOR.newInstance(null, profile, ping, VALID_GAME_MODE_TYPE, NMSUtils.stringToComponent(entry.getDisplay()));
+            Class<?>[] types = PLAYER_INFO_ENTRY_CONSTRUCTOR.getParameterTypes();
+            Object[] values = new Object[types.length];
+            Object component = version != 5 && display != null ? NMSUtils.stringToComponent(display) : null;
+            int mod = 0;
+
+            if (PLAYER_INFO_REMOVE_CLASS != null) {
+                values[mod++] = uuid;
+                values[mod++] = profile;
+                values[mod++] = listed;
+                values[mod++] = ping;
+                values[mod++] = VALID_GAME_MODE_TYPE;
+                values[mod++] = component;
+
+                if (SHOW_HAT_PRESENT) {
+                    values[mod++] = false;
+                }
+
+                if (LIST_ORDER_PRESENT) {
+                    values[mod++] = 0;
+                }
+
+                values[mod] = null;
+
+            } else {
+                if (types[0] != GameProfile.class) {
+                    values[mod++] = null;
+                }
+
+                values[mod++] = profile;
+                values[mod++] = ping;
+                values[mod++] = VALID_GAME_MODE_TYPE;
+                values[mod] = component;
+            }
+
+            return PLAYER_INFO_ENTRY_CONSTRUCTOR.newInstance(values);
 
         } catch (Exception e) {
             throw new RuntimeException(e);

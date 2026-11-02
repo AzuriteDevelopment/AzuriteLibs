@@ -16,23 +16,50 @@ import java.util.UUID;
 @Setter
 public class TablistEntry extends OldEntry {
 
-    private UUID uuid;
-    private GameProfile profile;
+    protected UUID uuid;
+    protected GameProfile profile;
+    protected OldEntry oldEntry;
 
-    private String profileName;
-    private String numberName;
+    protected String profileName;
+    protected String teamName;
 
-    private OldEntry oldEntry;
+    protected boolean removed;
 
-    public TablistEntry(String display, String profileName, String numberName, TablistSkin skin, int ping) {
+    public TablistEntry(String display, TablistSkin skin, int col, int row, int ping) {
         super(display, skin, ping);
 
         this.uuid = null;
         this.profile = null;
-
-        this.profileName = profileName;
-        this.numberName = numberName;
-
         this.oldEntry = null;
+
+        this.profileName = getProfileName(col, row);
+        this.teamName = getTeamName(col, row);
+
+        this.removed = false;
+    }
+
+    public boolean shouldUpdateDisplay() {
+        return oldEntry == null || !oldEntry.getDisplay().equals(display);
+    }
+
+    public boolean shouldUpdatePing() {
+        return oldEntry == null || oldEntry.getPing() != ping;
+    }
+
+    public boolean shouldUpdateSkin() {
+        return oldEntry == null || !oldEntry.getSkin().equals(skin);
+    }
+
+    private String getProfileName(int col, int row) {
+        StringBuilder builder = new StringBuilder("§" + col);
+
+        for (char c : String.valueOf(row).toCharArray()) {
+            builder.append("§").append(c);
+        }
+        return builder.toString();
+    }
+
+    private String getTeamName(int col, int row) {
+        return String.format("%016d", (col * 20) + row);
     }
 }

@@ -8,6 +8,7 @@ import dev.azurite.libs.modules.commands.annotations.TabComplete;
 import dev.azurite.libs.modules.commands.command.SubCommand;
 import dev.azurite.libs.modules.commands.command.api.CommandClass;
 import dev.azurite.libs.modules.commands.comparator.MethodComparator;
+import dev.azurite.libs.modules.commands.settings.CommandSettings;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,16 +26,15 @@ import java.util.function.Consumer;
 public class CommandModule extends Module<AzuriteLibs> {
 
     private final Map<String, Command> commands;
-    private String noPermissionMessage;
-    private String onlyPlayerMessage;
-    private String onlyConsoleMessage;
+    private CommandSettings settings;
 
     public CommandModule(AzuriteLibs azuriteLibs) {
         super(azuriteLibs);
         this.commands = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        this.noPermissionMessage = "You do not have permission to use this command";
-        this.onlyPlayerMessage = "Only players can use this command";
-        this.onlyConsoleMessage = "Only console can use this command";
+    }
+
+    public void enable(CommandSettings settings) {
+        this.settings = settings;
     }
 
     public void unregisterAllCommands() {
@@ -65,6 +65,10 @@ public class CommandModule extends Module<AzuriteLibs> {
     }
 
     public void registerCommand(String prefix, CommandClass commandClass) {
+        if (settings == null) {
+            throw new IllegalStateException("Command module has no settings.");
+        }
+
         List<Method> methods = this.findMethods(commandClass);
         List<Command> registering = new ArrayList<>();
 

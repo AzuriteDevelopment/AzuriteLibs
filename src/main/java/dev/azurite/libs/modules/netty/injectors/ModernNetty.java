@@ -32,19 +32,21 @@ public class ModernNetty extends Netty {
             pipeline.addBefore("packet_handler", name, new ChannelDuplexHandler() {
                 @Override
                 public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-                    boolean write = listener.write(player, msg);
+                    boolean write = listener.preWrite(player, msg);
 
                     if (write) {
                         super.write(ctx, msg, promise);
+                        listener.postWrite(player, msg);
                     }
                 }
 
                 @Override
                 public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-                    boolean read = listener.read(player, msg);
+                    boolean read = listener.preRead(player, msg);
 
                     if (read) {
                         super.channelRead(ctx, msg);
+                        listener.postRead(player, msg);
                     }
                 }
             });

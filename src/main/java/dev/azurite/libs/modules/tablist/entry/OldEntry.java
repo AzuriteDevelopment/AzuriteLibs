@@ -13,9 +13,9 @@ import lombok.Setter;
 @Setter
 public class OldEntry {
 
-    private String display;
-    private TablistSkin skin;
-    private int ping;
+    protected String display;
+    protected TablistSkin skin;
+    protected int ping;
 
     public OldEntry(TablistEntry entry) {
         this.display = entry.getDisplay();

@@ -14,6 +14,8 @@ public interface TablistAdapter {
 
     String[] getFooter(Player player);
 
+    int getColumns(Player player, int version);
+
     void updateEntries(Player player, Tablist tablist);
 
 }

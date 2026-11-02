@@ -1,7 +1,9 @@
 package dev.azurite.libs.modules.nametags.adapter;
 
-import dev.azurite.libs.modules.nametags.Nametag;
+import dev.azurite.libs.modules.nametags.update.NametagUpdate;
 import org.bukkit.entity.Player;
+
+import java.util.List;
 
 /**
  * Copyright (c) 2026. Keano
@@ -10,6 +12,8 @@ import org.bukkit.entity.Player;
  */
 public interface NametagAdapter {
 
-    void updateNametag(Nametag nametag, Player viewer, Player target);
+    NametagUpdate getNametagUpdate(Player viewer, Player target);
+
+    List<String> getLunarNametags(Player viewer, Player target);
 
 }

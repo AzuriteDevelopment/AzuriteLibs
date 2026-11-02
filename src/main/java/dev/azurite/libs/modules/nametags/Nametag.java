@@ -2,18 +2,16 @@ package dev.azurite.libs.modules.nametags;
 
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
-import dev.azurite.libs.modules.nametags.enums.CollisionRule;
-import dev.azurite.libs.modules.nametags.enums.NametagColor;
-import dev.azurite.libs.modules.nametags.enums.NametagVisibility;
 import dev.azurite.libs.modules.nametags.enums.TeamAction;
 import dev.azurite.libs.modules.nametags.scoreboard.AzuriteLunar;
 import dev.azurite.libs.modules.nametags.scoreboard.AzuriteScoreboard;
 import dev.azurite.libs.modules.nametags.scoreboard.AzuriteTeam;
+import dev.azurite.libs.modules.nametags.update.NametagUpdate;
 import dev.azurite.libs.utils.CC;
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,6 +19,7 @@ import java.util.Map;
  * Use or redistribution of source or file is
  * only permitted if given explicit permission.
  */
+@Getter
 public class Nametag extends SubModule<AzuriteLibs, NametagModule> {
 
     private final Player player;
@@ -34,42 +33,12 @@ public class Nametag extends SubModule<AzuriteLibs, NametagModule> {
         this.lunar = Bukkit.getPluginManager().isPluginEnabled("Apollo-Bukkit") ? new AzuriteLunar() : null;
     }
 
-    public void addAndCreateTeam(Player target, String team, NametagColor color) {
-        this.addAndCreateTeam(target, team, "", "", NametagVisibility.ALWAYS, CollisionRule.NEVER, color, true, false);
-    }
-
-    public void addAndCreateTeam(Player target, String team, String prefix, NametagColor color) {
-        this.addAndCreateTeam(target, team, prefix, "", NametagVisibility.ALWAYS, CollisionRule.NEVER, color, true, false);
-    }
-
-    public void addAndCreateTeam(Player target, String team, String prefix, String suffix) {
-        this.addAndCreateTeam(target, team, prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.NEVER, NametagColor.NONE, true, false);
-    }
-
-    public void addAndCreateTeam(Player target, String team, String prefix, String suffix, NametagColor color) {
-        this.addAndCreateTeam(target, team, prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.NEVER, color, true, false);
-    }
-
-    public void addAndCreateTeam(Player target, String team, String prefix, String suffix, NametagVisibility visibility) {
-        this.addAndCreateTeam(target, team, prefix, suffix, visibility, CollisionRule.NEVER, NametagColor.NONE, true, false);
-    }
-
-    public void addAndCreateTeam(Player target, String team, String prefix, String suffix, NametagVisibility visibility, CollisionRule rule, NametagColor color) {
-        this.addAndCreateTeam(target, team, prefix, suffix, visibility, rule, color, true, false);
-    }
-
-    public void addAndCreateTeam(Player target, String team, String prefix, String suffix, NametagVisibility visibility, CollisionRule rule, NametagColor color, boolean friendlyInvis, boolean friendlyFire) {
-        scoreboard.addAndCreateTeam(player, target.getName(), team, CC.t(prefix), CC.t(suffix), visibility, rule, color, friendlyInvis, friendlyFire);
-    }
-
-    public void addLunarNametag(Player target, List<String> nametag) {
-        if (lunar != null) {
-            lunar.addLunarNametag(player, target, CC.t(nametag));
-        }
-    }
-
-    public void update(Player viewer, Player target) {
-        module.getAdapter().updateNametag(this, viewer, target);
+    public void update(NametagUpdate update, Player target) {
+        scoreboard.addAndCreateTeam(player, target.getName(),
+                update.getTeam(), CC.t(update.getPrefix()), CC.t(update.getSuffix()),
+                update.getNametagVisibility(), update.getCollisionRule(), update.getNametagColor(),
+                update.isFriendlyInvis(), update.isFriendlyFire()
+        );
     }
 
     public void delete() {

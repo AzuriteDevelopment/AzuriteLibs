@@ -15,8 +15,8 @@ import java.util.function.Function;
 @Getter
 public enum Sender {
 
-    PLAYER_ONLY(CommandModule::getOnlyPlayerMessage, Player.class),
-    CONSOLE_ONLY(CommandModule::getOnlyConsoleMessage, ConsoleCommandSender.class),
+    PLAYER_ONLY(module -> module.getSettings().getOnlyPlayerMessage(), Player.class),
+    CONSOLE_ONLY(module -> module.getSettings().getOnlyConsoleMessage(), ConsoleCommandSender.class),
     ANY(null, null);
 
     private final Function<CommandModule, String> notValidMessage;

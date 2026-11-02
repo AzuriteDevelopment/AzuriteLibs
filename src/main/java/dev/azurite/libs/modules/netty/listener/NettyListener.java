@@ -9,11 +9,17 @@ import org.bukkit.entity.Player;
  */
 public interface NettyListener {
 
-    default boolean write(Player player, Object packet) {
+    default boolean preWrite(Player player, Object packet) {
         return true;
     }
 
-    default boolean read(Player player, Object packet) {
+    default boolean preRead(Player player, Object packet) {
         return true;
+    }
+
+    default void postWrite(Player player, Object packet) {
+    }
+
+    default void postRead(Player player, Object packet) {
     }
 }

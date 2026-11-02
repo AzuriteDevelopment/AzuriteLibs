@@ -3,6 +3,7 @@ package dev.azurite.libs.modules.nametags.scoreboard;
 import com.lunarclient.apollo.Apollo;
 import com.lunarclient.apollo.module.nametag.Nametag;
 import com.lunarclient.apollo.module.nametag.NametagModule;
+import dev.azurite.libs.utils.CC;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
@@ -23,15 +24,19 @@ public class AzuriteLunar {
         this.nametagModule = Apollo.getModuleManager().getModule(NametagModule.class);
     }
 
-    public void addLunarNametag(Player player, Player target, List<String> nametag) {
+    public boolean isRunningLunar(Player player) {
+        return Apollo.getPlayerManager().hasSupport(player.getUniqueId());
+    }
+
+    public void addLunarNametag(Player viewer, Player target, List<String> nametag) {
         Collections.reverse(nametag);
-        Apollo.getPlayerManager().getPlayer(player.getUniqueId()).ifPresent(apolloPlayer -> {
-            nametagModule.overrideNametag(apolloPlayer, target.getUniqueId(), Nametag.builder()
-                    .lines(nametag
-                            .stream()
-                            .map(Component::text)
-                            .collect(Collectors.toList()))
-                    .build());
-        });
+        Apollo.getPlayerManager().getPlayer(viewer.getUniqueId()).ifPresent(apolloPlayer ->
+                nametagModule.overrideNametag(apolloPlayer, target.getUniqueId(), Nametag.builder()
+                        .lines(nametag
+                                .stream()
+                                .map(CC::t)
+                                .map(Component::text)
+                                .collect(Collectors.toList()))
+                        .build()));
     }
 }
