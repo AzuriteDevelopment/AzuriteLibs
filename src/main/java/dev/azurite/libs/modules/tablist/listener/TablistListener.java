@@ -47,7 +47,7 @@ public class TablistListener extends SubModule<AzuriteLibs, TablistModule> {
         Tablist tablist = module.getCachedData().remove(player.getUniqueId());
 
         if (tablist != null) {
-            tablist.getEntries().clear();
+            tablist.delete();
         }
     }
 }

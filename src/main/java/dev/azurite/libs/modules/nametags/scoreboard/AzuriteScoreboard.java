@@ -7,6 +7,7 @@ import dev.azurite.libs.modules.nametags.enums.TeamAction;
 import lombok.Getter;
 import org.bukkit.entity.Player;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,6 +23,18 @@ public class AzuriteScoreboard {
 
     public AzuriteScoreboard() {
         this.teams = new ConcurrentHashMap<>();
+    }
+
+    public void removeFromTeam(Player player, String target, String team) {
+        AzuriteTeam azuriteTeam = teams.get(team);
+
+        if (azuriteTeam != null && azuriteTeam.getPlayers().remove(target)) {
+            azuriteTeam.sendUpdate(player, TeamAction.REMOVE_PLAYERS, Collections.singletonList(target));
+        }
+    }
+
+    public void addAndCreateTeam(Player player, String target, String team, String prefix, String suffix) {
+        this.addAndCreateTeam(player, target, team, prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.ALWAYS, NametagColor.NONE, true, false);
     }
 
     public void addAndCreateTeam(Player player, String target, String team, String prefix,
@@ -51,7 +64,7 @@ public class AzuriteScoreboard {
 
         // Add players
         if (azuriteTeam.addPlayer(target)) {
-            azuriteTeam.sendUpdate(player, TeamAction.ADD_PLAYERS);
+            azuriteTeam.sendUpdate(player, TeamAction.ADD_PLAYERS, Collections.singletonList(target));
         }
     }
 }

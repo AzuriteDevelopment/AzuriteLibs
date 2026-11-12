@@ -5,6 +5,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import dev.azurite.libs.modules.tablist.skin.TablistSkin;
+import jdk.internal.misc.Unsafe;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -88,6 +89,29 @@ public class NMSUtils {
             PROPERTY_VALUE_FIELD = streamFieldsFindFirst(PROPERTY_CLASS, field -> field.getName().equals("value"), false, true);
             PROPERTY_SIGNATURE_FIELD = streamFieldsFindFirst(PROPERTY_CLASS, field -> field.getName().equals("signature"), false, true);
             BASE_COMPONENT_CLASS = FROM_STRING_METHOD.getReturnType().getComponentType();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void setField(Object packet, Field field, Object value) {
+        try {
+
+            Class<?> type = field.getType();
+
+            if (type == int.class) {
+                field.set(packet, (int) value);
+
+            } else if (type == String.class) {
+                field.set(packet, (String) value);
+
+            } else if (type == BASE_COMPONENT_CLASS) {
+                field.set(packet, stringToComponent((String) value));
+
+            } else if (type == Collection.class) {
+                field.set(packet, (Collection<?>) value);
+            }
 
         } catch (Exception e) {
             throw new RuntimeException(e);

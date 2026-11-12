@@ -5,9 +5,6 @@ import com.google.common.collect.Tables;
 import com.mojang.authlib.GameProfile;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
-import dev.azurite.libs.modules.nametags.enums.CollisionRule;
-import dev.azurite.libs.modules.nametags.enums.NametagColor;
-import dev.azurite.libs.modules.nametags.enums.NametagVisibility;
 import dev.azurite.libs.modules.nametags.scoreboard.AzuriteScoreboard;
 import dev.azurite.libs.modules.netty.listener.NettyListener;
 import dev.azurite.libs.modules.tablist.Tablist;
@@ -108,13 +105,13 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
 
     private final Tablist tablist;
     private final AzuriteScoreboard scoreboard;
-    private int version;
+    private final int version;
 
     public TablistInjector(TablistModule module, Tablist tablist) {
         super(module);
         this.tablist = tablist;
         this.scoreboard = new AzuriteScoreboard();
-        this.version = -1;
+        this.version = VersionUtils.getProtocolVersion(tablist.getPlayer());
     }
 
     @Override
@@ -221,7 +218,6 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
     }
 
     private void createTablist(Player player) {
-        this.version = VersionUtils.getProtocolVersion(player);
         int maxColumns = version == 5 ? 3 : 4;
         int size = maxColumns * 20;
 
@@ -328,7 +324,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
                 suffix = split.getRight();
             }
 
-            scoreboard.addAndCreateTeam(player, entry.getProfileName(), entry.getTeamName(), prefix, suffix, NametagVisibility.ALWAYS, CollisionRule.NEVER, NametagColor.NONE, false, false);
+            scoreboard.addAndCreateTeam(player, entry.getProfileName(), entry.getTeamName(), prefix, suffix);
         }
     }
 

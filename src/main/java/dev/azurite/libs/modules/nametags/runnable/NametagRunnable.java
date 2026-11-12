@@ -3,7 +3,7 @@ package dev.azurite.libs.modules.nametags.runnable;
 import dev.azurite.libs.modules.nametags.Nametag;
 import dev.azurite.libs.modules.nametags.NametagModule;
 import dev.azurite.libs.modules.nametags.adapter.NametagAdapter;
-import dev.azurite.libs.modules.nametags.scoreboard.AzuriteLunar;
+import dev.azurite.libs.modules.nametags.lunar.AzuriteLunar;
 import dev.azurite.libs.modules.nametags.update.NametagUpdate;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;

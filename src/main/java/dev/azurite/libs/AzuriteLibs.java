@@ -1,6 +1,9 @@
 package dev.azurite.libs;
 
 import dev.azurite.libs.loader.ModuleLoader;
+import dev.azurite.libs.modules.board.BoardModule;
+import dev.azurite.libs.modules.board.adapter.BoardAdapter;
+import dev.azurite.libs.modules.board.settings.BoardSettings;
 import dev.azurite.libs.modules.commands.CommandModule;
 import dev.azurite.libs.modules.nametags.NametagModule;
 import dev.azurite.libs.modules.nametags.adapter.NametagAdapter;
@@ -18,6 +21,7 @@ import lombok.Getter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -33,6 +37,7 @@ public class AzuriteLibs extends ModuleLoader {
     private final NettyModule nettyModule;
     private final TablistModule tablistModule;
     private final NametagModule nametagModule;
+    private final BoardModule boardModule;
     private final CommandModule commandModule;
 
     public AzuriteLibs(JavaPlugin plugin) {
@@ -40,7 +45,51 @@ public class AzuriteLibs extends ModuleLoader {
         this.nettyModule = new NettyModule(this);
         this.tablistModule = new TablistModule(this);
         this.nametagModule = new NametagModule(this);
+        this.boardModule = new BoardModule(this);
         this.commandModule = new CommandModule(this);
+
+        boardModule.enable(BoardSettings.builder()
+                .tickTime(200L)
+                .adapter(new BoardAdapter() {
+                    @Override
+                    public String getTitle(Player player) {
+                        return player.isSneaking() ? "Sneaking Title" : "Normal Title";
+                    }
+
+                    @Override
+                    public List<String> getLines(Player player) {
+                        List<String> lines = new ArrayList<>();
+
+                        lines.add("line1");
+                        lines.add("line2");
+                        lines.add("line3");
+                        lines.add("line4");
+
+                        StringBuilder builder = new StringBuilder();
+
+                        for (int i = 1; i <= 16; i++) {
+                            builder.append("p");
+                        }
+
+                        for (int i = 1; i <= 16; i++) {
+                            builder.append("e");
+                        }
+
+                        for (int i = 1; i <= 16; i++) {
+                            builder.append("s");
+                        }
+
+                        lines.add(builder.toString());
+
+                        if (player.isSneaking()) {
+                            lines.add("Sneaking: " + player.isSneaking());
+                            lines.add(builder.toString());
+                        }
+
+                        return lines;
+                    }
+                })
+                .build());
 
         tablistModule.enable(TablistSettings.builder()
                 .tickTime(500L)

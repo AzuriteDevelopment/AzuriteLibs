@@ -3,7 +3,7 @@ package dev.azurite.libs.modules.nametags;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
 import dev.azurite.libs.modules.nametags.enums.TeamAction;
-import dev.azurite.libs.modules.nametags.scoreboard.AzuriteLunar;
+import dev.azurite.libs.modules.nametags.lunar.AzuriteLunar;
 import dev.azurite.libs.modules.nametags.scoreboard.AzuriteScoreboard;
 import dev.azurite.libs.modules.nametags.scoreboard.AzuriteTeam;
 import dev.azurite.libs.modules.nametags.update.NametagUpdate;

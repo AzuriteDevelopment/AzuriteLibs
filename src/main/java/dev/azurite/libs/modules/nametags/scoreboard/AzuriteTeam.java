@@ -5,6 +5,7 @@ import dev.azurite.libs.modules.nametags.enums.NametagColor;
 import dev.azurite.libs.modules.nametags.enums.NametagVisibility;
 import dev.azurite.libs.modules.nametags.enums.TeamAction;
 import dev.azurite.libs.modules.versions.utils.VersionUtils;
+import dev.azurite.libs.utils.NMSAllocator;
 import dev.azurite.libs.utils.NMSUtils;
 import dev.azurite.libs.utils.Pair;
 import lombok.Getter;
@@ -28,13 +29,13 @@ public class AzuriteTeam {
     private static final Class<?> SCOREBOARD_TEAM_PACKET_CLASS;
     private static final Class<?> SCOREBOARD_TEAM_CLASS;
     private static final Class<?> SCOREBOARD_TEAM_PARAMETERS_CLASS;
-    private static final Class<?> SCOREBOARD_CLASS;
     private static final Class<?> NAMETAG_COLOR_CLASS;
     private static final Class<?> NAMETAG_VISIBILITY_CLASS;
     private static final Class<?> COLLISION_RULE_CLASS;
 
     private static final Enum<?> DEFAULT_COLOR_ENUM;
 
+    private static final NMSAllocator.Allocator SCOREBOARD_TEAM_PARAMETERS_ALLOCATOR;
     private static final Constructor<?> SCOREBOARD_TEAM_PACKET_CONSTRUCTOR;
     private static final Constructor<?> SCOREBOARD_TEAM_PARAMETERS_CONSTRUCTOR;
 
@@ -42,7 +43,6 @@ public class AzuriteTeam {
     private static final Field[] SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS;
 
     private static final Method GET_NAMETAG_COLOR_METHOD;
-    private static final Object FAKE_SCOREBOARD_TEAM;
 
     static {
         try {
@@ -51,7 +51,6 @@ public class AzuriteTeam {
             SCOREBOARD_TEAM_PACKET_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutScoreboardTeam", "ClientboundSetPlayerTeamPacket");
             SCOREBOARD_TEAM_CLASS = NMSUtils.getNMSClass("world.scores", "ScoreboardTeam", "PlayerTeam");
             SCOREBOARD_TEAM_PARAMETERS_CLASS = Arrays.stream(SCOREBOARD_TEAM_PACKET_CLASS.getDeclaredClasses()).filter(clazz -> NMSUtils.getConstructorOrNull(clazz, SCOREBOARD_TEAM_CLASS) != null).findFirst().orElse(null);
-            SCOREBOARD_CLASS = SCOREBOARD_TEAM_PARAMETERS_CLASS != null ? NMSUtils.getNMSClass("world.scores", "Scoreboard") : null;
             NAMETAG_COLOR_CLASS = NMSUtils.getNMSClass("world.scores", "EnumChatFormat", "TeamColor");
             NAMETAG_VISIBILITY_CLASS = NMSUtils.getNMSClass("world.scores", "ScoreboardTeamBase$EnumNameTagVisibility", "Team$Visibility");
             COLLISION_RULE_CLASS = NMSUtils.getNMSClassOrNull("world.scores", "ScoreboardTeamBase$EnumTeamPush", "Team$CollisionRule");
@@ -60,6 +59,7 @@ public class AzuriteTeam {
             DEFAULT_COLOR_ENUM = NMSUtils.findEnumConstant(NAMETAG_COLOR_CLASS, NAMETAG_COLOR_CLASS.getEnumConstants().length - 1);
 
             // Constructors
+            SCOREBOARD_TEAM_PARAMETERS_ALLOCATOR = SCOREBOARD_TEAM_PARAMETERS_CLASS != null ? NMSAllocator.getAllocator(SCOREBOARD_TEAM_PARAMETERS_CLASS) : null;
             SCOREBOARD_TEAM_PACKET_CONSTRUCTOR = NMSUtils.streamFindConstructor(SCOREBOARD_TEAM_PACKET_CLASS, constructor -> constructor.getParameterCount() == 0, true, NMSUtils.getConstructorOrNull(SCOREBOARD_TEAM_PACKET_CLASS, String.class, int.class, Optional.class, Collection.class));
             SCOREBOARD_TEAM_PARAMETERS_CONSTRUCTOR = SCOREBOARD_TEAM_PARAMETERS_CLASS != null ? NMSUtils.streamFindConstructor(SCOREBOARD_TEAM_PARAMETERS_CLASS, constructor -> constructor.getParameterCount() > 1, true, SCOREBOARD_TEAM_PARAMETERS_CLASS.getConstructors()[0]) : null;
 
@@ -69,9 +69,6 @@ public class AzuriteTeam {
 
             // Methods
             GET_NAMETAG_COLOR_METHOD = Arrays.stream(NAMETAG_COLOR_CLASS.getDeclaredMethods()).filter(method -> method.getReturnType() == NAMETAG_COLOR_CLASS && method.getParameterCount() == 1 && method.getParameterTypes()[0] == String.class).findFirst().orElse(null);
-
-            // Objects
-            FAKE_SCOREBOARD_TEAM = SCOREBOARD_TEAM_PARAMETERS_CLASS != null ? SCOREBOARD_TEAM_CLASS.getConstructor(SCOREBOARD_CLASS, String.class).newInstance(SCOREBOARD_CLASS.newInstance(), "Azurite") : null;
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -146,6 +143,10 @@ public class AzuriteTeam {
     }
 
     public void sendUpdate(Player player, TeamAction action) {
+        this.sendUpdate(player, action, players);
+    }
+
+    public void sendUpdate(Player player, TeamAction action, List<String> players) {
         try {
 
             boolean sendParameters = action == TeamAction.CREATE_TEAM || action == TeamAction.UPDATE_TEAM;
@@ -153,8 +154,8 @@ public class AzuriteTeam {
             int version = VersionUtils.getProtocolVersion(player);
 
             Object packet = SCOREBOARD_TEAM_PACKET_CONSTRUCTOR.getParameterCount() == 0 ?
-                    getLegacyPacket(action, sendParameters, sendPlayerList, version) :
-                    getModernPacket(action, sendParameters, sendPlayerList);
+                    getLegacyPacket(action, players, sendParameters, sendPlayerList, version) :
+                    getModernPacket(action, players, sendParameters, sendPlayerList);
 
             NMSUtils.sendPacket(player, packet);
 
@@ -163,40 +164,43 @@ public class AzuriteTeam {
         }
     }
 
-    private Object getLegacyPacket(TeamAction action, boolean sendParameters, boolean sendPlayerList, int version) {
+    private Object getLegacyPacket(TeamAction action, List<String> players, boolean sendParameters, boolean sendPlayerList, int version) {
         try {
-            boolean hasCollisionRule = SCOREBOARD_TEAM_PACKET_FIELDS.length == 10;
-            int add = hasCollisionRule ? 1 : 0;
+            int add = SCOREBOARD_TEAM_PACKET_FIELDS.length == 10 ? 1 : 0;
 
             Object packet = SCOREBOARD_TEAM_PACKET_CONSTRUCTOR.newInstance();
             Field colorField = SCOREBOARD_TEAM_PACKET_FIELDS[5 + add];
 
             boolean isIntColor = colorField.getType() == int.class;
             boolean addColor = isIntColor && nametagColor != NametagColor.NONE;
-            Pair<String, String> prefixSuffix = cutPrefixSuffix(version, prefix, suffix, addColor);
 
-            setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[0], name);
-            setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[7 + add], action.getId());
+            // Name + Action
+            NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[0], name);
+            NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[7 + add], action.getId());
 
+            // Parameters
             if (sendParameters) {
-                setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[1], name);
-                setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[2], prefixSuffix.getLeft());
-                setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[3], prefixSuffix.getRight());
-                setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[4], nametagVisibility.getName());
+                Pair<String, String> prefixSuffix = cutPrefixSuffix(version, prefix, suffix, addColor);
 
-                if (hasCollisionRule) {
-                    setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[5], collisionRule.getName());
+                NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[1], name);
+                NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[2], prefixSuffix.getLeft());
+                NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[3], prefixSuffix.getRight());
+                NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[4], nametagVisibility.getName());
+
+                if (SCOREBOARD_TEAM_PACKET_FIELDS.length == 10) {
+                    NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[5], collisionRule.getName());
                 }
 
-                if (!isIntColor) {
-                    setField(packet, colorField, getChatFormat());
+                if (colorField.getType() != int.class) {
+                    NMSUtils.setField(packet, colorField, getChatFormat());
                 }
 
-                setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[8 + add], packOptionData());
+                NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[8 + add], packOptionData());
             }
 
+            // Player list
             if (sendPlayerList) {
-                setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[6 + add], players);
+                NMSUtils.setField(packet, SCOREBOARD_TEAM_PACKET_FIELDS[6 + add], players);
             }
 
             return packet;
@@ -206,22 +210,23 @@ public class AzuriteTeam {
         }
     }
 
-    private Object getModernPacket(TeamAction action, boolean sendParameters, boolean sendPlayerList) {
+    private Object getModernPacket(TeamAction action, List<String> players, boolean sendParameters, boolean sendPlayerList) {
         try {
 
             Optional<Object> parameters;
 
             if (sendParameters) {
+                // Parameters object
                 if (SCOREBOARD_TEAM_PARAMETERS_CONSTRUCTOR.getParameterCount() == 1) {
-                    Object object = SCOREBOARD_TEAM_PARAMETERS_CONSTRUCTOR.newInstance(FAKE_SCOREBOARD_TEAM);
+                    Object object = SCOREBOARD_TEAM_PARAMETERS_ALLOCATOR.allocate();
 
-                    setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[0], "");
-                    setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[1], prefix);
-                    setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[2], suffix);
-                    setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[3], nametagVisibility.getName());
-                    setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[4], collisionRule.getName());
-                    setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[5], getChatFormat());
-                    setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[6], packOptionData());
+                    NMSUtils.setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[0], "");
+                    NMSUtils.setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[1], prefix);
+                    NMSUtils.setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[2], suffix);
+                    NMSUtils.setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[3], nametagVisibility.getName());
+                    NMSUtils.setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[4], collisionRule.getName());
+                    NMSUtils.setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[5], getChatFormat());
+                    NMSUtils.setField(object, SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS[6], packOptionData());
 
                     parameters = Optional.of(object);
 
@@ -245,7 +250,7 @@ public class AzuriteTeam {
 
             return SCOREBOARD_TEAM_PACKET_CONSTRUCTOR.newInstance(name, action.getId(), parameters, sendPlayerList ? players : Collections.emptyList());
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
@@ -286,28 +291,5 @@ public class AzuriteTeam {
             data |= 2;
         }
         return data;
-    }
-
-    private void setField(Object packet, Field field, Object value) {
-        try {
-
-            Class<?> type = field.getType();
-
-            if (type == int.class) {
-                field.set(packet, (int) value);
-
-            } else if (type == String.class) {
-                field.set(packet, (String) value);
-
-            } else if (type == NMSUtils.BASE_COMPONENT_CLASS) {
-                field.set(packet, NMSUtils.stringToComponent((String) value));
-
-            } else if (type == Collection.class) {
-                field.set(packet, (Collection<?>) value);
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

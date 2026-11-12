@@ -1,4 +1,4 @@
-package dev.azurite.libs.modules.nametags.scoreboard;
+package dev.azurite.libs.modules.nametags.lunar;
 
 import com.lunarclient.apollo.Apollo;
 import com.lunarclient.apollo.module.nametag.Nametag;

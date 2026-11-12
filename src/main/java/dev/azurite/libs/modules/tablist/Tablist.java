@@ -3,6 +3,8 @@ package dev.azurite.libs.modules.tablist;
 import com.google.common.collect.Table;
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
+import dev.azurite.libs.modules.nametags.enums.TeamAction;
+import dev.azurite.libs.modules.nametags.scoreboard.AzuriteTeam;
 import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
 import dev.azurite.libs.modules.tablist.entry.OldEntry;
 import dev.azurite.libs.modules.tablist.entry.TablistEntry;
@@ -15,6 +17,7 @@ import lombok.Setter;
 import org.bukkit.entity.Player;
 
 import java.util.Arrays;
+import java.util.Map;
 
 /**
  * Copyright (c) 2026. Keano
@@ -117,6 +120,25 @@ public class Tablist extends SubModule<AzuriteLibs, TablistModule> {
 
                 injector.sendTablistUpdate(player, entry);
                 entry.setOldEntry(new OldEntry(entry));
+            }
+        }
+    }
+
+    public void delete() {
+        // Clear teams
+        Map<String, AzuriteTeam> teams = injector.getScoreboard().getTeams();
+
+        for (AzuriteTeam team : teams.values()) {
+            team.sendUpdate(player, TeamAction.REMOVE_TEAM);
+        }
+
+        teams.clear();
+
+        // Clear entries
+        for (int row = 0; row < 20; row++) {
+            for (int col = 0; col < maxColumns; col++) {
+                TablistEntry entry = entries.get(col, row);
+                injector.sendTablistRemove(player, entry);
             }
         }
     }
