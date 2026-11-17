@@ -27,15 +27,16 @@ import java.util.*;
 public class AzuriteTeam {
 
     private static final Class<?> SCOREBOARD_TEAM_PACKET_CLASS;
-    private static final Class<?> SCOREBOARD_TEAM_CLASS;
-    private static final Class<?> SCOREBOARD_TEAM_PARAMETERS_CLASS;
     private static final Class<?> NAMETAG_COLOR_CLASS;
-    private static final Class<?> NAMETAG_VISIBILITY_CLASS;
-    private static final Class<?> COLLISION_RULE_CLASS;
+
+    private static final Class<?> SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS;
+    private static final Class<?> COLLISION_RULE_SUB_CLASS;
+    private static final Class<?> NAMETAG_VISIBILITY_SUB_CLASS;
 
     private static final Enum<?> DEFAULT_COLOR_ENUM;
 
     private static final NMSAllocator.Allocator SCOREBOARD_TEAM_PARAMETERS_ALLOCATOR;
+
     private static final Constructor<?> SCOREBOARD_TEAM_PACKET_CONSTRUCTOR;
     private static final Constructor<?> SCOREBOARD_TEAM_PARAMETERS_CONSTRUCTOR;
 
@@ -45,34 +46,31 @@ public class AzuriteTeam {
     private static final Method GET_NAMETAG_COLOR_METHOD;
 
     static {
-        try {
+        // Classes
+        SCOREBOARD_TEAM_PACKET_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutScoreboardTeam", "ClientboundSetPlayerTeamPacket");
+        NAMETAG_COLOR_CLASS = NMSUtils.getNMSClass("world.scores", "EnumChatFormat", "TeamColor");
 
-            // Classes
-            SCOREBOARD_TEAM_PACKET_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutScoreboardTeam", "ClientboundSetPlayerTeamPacket");
-            SCOREBOARD_TEAM_CLASS = NMSUtils.getNMSClass("world.scores", "ScoreboardTeam", "PlayerTeam");
-            SCOREBOARD_TEAM_PARAMETERS_CLASS = Arrays.stream(SCOREBOARD_TEAM_PACKET_CLASS.getDeclaredClasses()).filter(clazz -> NMSUtils.getConstructorOrNull(clazz, SCOREBOARD_TEAM_CLASS) != null).findFirst().orElse(null);
-            NAMETAG_COLOR_CLASS = NMSUtils.getNMSClass("world.scores", "EnumChatFormat", "TeamColor");
-            NAMETAG_VISIBILITY_CLASS = NMSUtils.getNMSClass("world.scores", "ScoreboardTeamBase$EnumNameTagVisibility", "Team$Visibility");
-            COLLISION_RULE_CLASS = NMSUtils.getNMSClassOrNull("world.scores", "ScoreboardTeamBase$EnumTeamPush", "Team$CollisionRule");
+        // Sub Classes
+        SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS = NMSUtils.getNMSSubClass("network.protocol.game", false, 1, SCOREBOARD_TEAM_PACKET_CLASS, "Parameters");
+        COLLISION_RULE_SUB_CLASS = NMSUtils.getNMSSubClass("world.scores", true, 0, NMSUtils.getNMSClassOrNull("world.scores", "ScoreboardTeamBase", "Team"), "EnumTeamPush", "CollisionRule");
+        NAMETAG_VISIBILITY_SUB_CLASS = NMSUtils.getNMSSubClass("world.scores", true, 1, NMSUtils.getNMSClassOrNull("world.scores", "ScoreboardTeamBase", "Team"), "EnumNameTagVisibility", "Visibility");
 
-            // Enums
-            DEFAULT_COLOR_ENUM = NMSUtils.findEnumConstant(NAMETAG_COLOR_CLASS, NAMETAG_COLOR_CLASS.getEnumConstants().length - 1);
+        // Enums
+        DEFAULT_COLOR_ENUM = NMSUtils.findEnumConstant(NAMETAG_COLOR_CLASS, NAMETAG_COLOR_CLASS.getEnumConstants().length - 1);
 
-            // Constructors
-            SCOREBOARD_TEAM_PARAMETERS_ALLOCATOR = SCOREBOARD_TEAM_PARAMETERS_CLASS != null ? NMSAllocator.getAllocator(SCOREBOARD_TEAM_PARAMETERS_CLASS) : null;
-            SCOREBOARD_TEAM_PACKET_CONSTRUCTOR = NMSUtils.streamFindConstructor(SCOREBOARD_TEAM_PACKET_CLASS, constructor -> constructor.getParameterCount() == 0, true, NMSUtils.getConstructorOrNull(SCOREBOARD_TEAM_PACKET_CLASS, String.class, int.class, Optional.class, Collection.class));
-            SCOREBOARD_TEAM_PARAMETERS_CONSTRUCTOR = SCOREBOARD_TEAM_PARAMETERS_CLASS != null ? NMSUtils.streamFindConstructor(SCOREBOARD_TEAM_PARAMETERS_CLASS, constructor -> constructor.getParameterCount() > 1, true, SCOREBOARD_TEAM_PARAMETERS_CLASS.getConstructors()[0]) : null;
+        // Allocator
+        SCOREBOARD_TEAM_PARAMETERS_ALLOCATOR = SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS != null ? NMSAllocator.getAllocator(SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS) : null;
 
-            // Fields
-            SCOREBOARD_TEAM_PACKET_FIELDS = Arrays.stream(SCOREBOARD_TEAM_PACKET_CLASS.getDeclaredFields()).peek(field -> field.setAccessible(true)).toArray(Field[]::new);
-            SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS = SCOREBOARD_TEAM_PARAMETERS_CLASS != null ? Arrays.stream(SCOREBOARD_TEAM_PARAMETERS_CLASS.getDeclaredFields()).peek(field -> field.setAccessible(true)).toArray(Field[]::new) : null;
+        // Constructors
+        SCOREBOARD_TEAM_PACKET_CONSTRUCTOR = NMSUtils.streamFindConstructor(SCOREBOARD_TEAM_PACKET_CLASS, constructor -> constructor.getParameterCount() == 0, true, NMSUtils.getConstructorOrNull(SCOREBOARD_TEAM_PACKET_CLASS, String.class, int.class, Optional.class, Collection.class));
+        SCOREBOARD_TEAM_PARAMETERS_CONSTRUCTOR = SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS != null ? NMSUtils.streamFindConstructor(SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS, constructor -> constructor.getParameterCount() > 1, true, SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS.getConstructors()[0]) : null;
 
-            // Methods
-            GET_NAMETAG_COLOR_METHOD = Arrays.stream(NAMETAG_COLOR_CLASS.getDeclaredMethods()).filter(method -> method.getReturnType() == NAMETAG_COLOR_CLASS && method.getParameterCount() == 1 && method.getParameterTypes()[0] == String.class).findFirst().orElse(null);
+        // Fields
+        SCOREBOARD_TEAM_PACKET_FIELDS = Arrays.stream(SCOREBOARD_TEAM_PACKET_CLASS.getDeclaredFields()).peek(field -> field.setAccessible(true)).toArray(Field[]::new);
+        SCOREBOARD_TEAM_PARAMETERS_PACKET_FIELDS = SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS != null ? Arrays.stream(SCOREBOARD_TEAM_PARAMETERS_SUB_CLASS.getDeclaredFields()).peek(field -> field.setAccessible(true)).toArray(Field[]::new) : null;
 
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        // Methods
+        GET_NAMETAG_COLOR_METHOD = Arrays.stream(NAMETAG_COLOR_CLASS.getDeclaredMethods()).filter(method -> method.getReturnType() == NAMETAG_COLOR_CLASS && method.getParameterCount() == 1 && method.getParameterTypes()[0] == String.class).findFirst().orElse(null);
     }
 
     private String name;
@@ -235,8 +233,8 @@ public class AzuriteTeam {
                     Object componentPrefix = NMSUtils.stringToComponent(prefix);
                     Object componentSuffix = NMSUtils.stringToComponent(suffix);
 
-                    Enum<?> enumNametag = NMSUtils.findEnumConstant(NAMETAG_VISIBILITY_CLASS, nametagVisibility.name());
-                    Enum<?> enumCollision = NMSUtils.findEnumConstant(COLLISION_RULE_CLASS, collisionRule.name());
+                    Enum<?> enumNametag = NMSUtils.findEnumConstant(NAMETAG_VISIBILITY_SUB_CLASS, nametagVisibility.name());
+                    Enum<?> enumCollision = NMSUtils.findEnumConstant(COLLISION_RULE_SUB_CLASS, collisionRule.name());
 
                     Optional<Object> color = nametagColor == NametagColor.NONE ? Optional.empty() : Optional.ofNullable(NMSUtils.findEnumConstant(NAMETAG_COLOR_CLASS, nametagColor.name()));
                     byte data = (byte) packOptionData();

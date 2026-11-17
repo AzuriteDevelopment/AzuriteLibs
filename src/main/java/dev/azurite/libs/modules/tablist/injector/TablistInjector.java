@@ -23,7 +23,6 @@ import org.bukkit.entity.Player;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -39,10 +38,11 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
 
     private static final Class<?> PLAYER_INFO_UPDATE_CLASS;
     private static final Class<?> PLAYER_INFO_REMOVE_CLASS;
-    private static final Class<?> PLAYER_INFO_ACTION_CLASS;
-    private static final Class<?> PLAYER_INFO_ENTRY_CLASS;
     private static final Class<?> HEADER_FOOTER_PACKET_CLASS;
-    private static final Class<?> GAME_MODE_CLASS;
+
+    private static final Class<?> PLAYER_INFO_ACTION_SUB_CLASS;
+    private static final Class<?> PLAYER_INFO_ENTRY_SUB_CLASS;
+    private static final Class<?> GAME_MODE_SUB_CLASS;
 
     private static final Constructor<?> PLAYER_INFO_UPDATE_CONSTRUCTOR;
     private static final Constructor<?> PLAYER_INFO_REMOVE_CONSTRUCTOR;
@@ -64,43 +64,39 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
     private static final boolean LIST_ORDER_PRESENT;
 
     static {
-        try {
+        // Classes
+        PLAYER_INFO_UPDATE_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerInfo", "ClientboundPlayerInfoUpdatePacket");
+        PLAYER_INFO_REMOVE_CLASS = NMSUtils.getNMSClassOrNull("network.protocol.game", "ClientboundPlayerInfoRemovePacket");
+        HEADER_FOOTER_PACKET_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerListHeaderFooter", "ClientboundTabListPacket");
 
-            // Classes
-            PLAYER_INFO_UPDATE_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerInfo", "ClientboundPlayerInfoUpdatePacket");
-            PLAYER_INFO_REMOVE_CLASS = NMSUtils.getNMSClassOrNull("network.protocol.game", "ClientboundPlayerInfoRemovePacket");
-            PLAYER_INFO_ACTION_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerInfo$EnumPlayerInfoAction", "ClientboundPlayerInfoUpdatePacket$Action");
-            PLAYER_INFO_ENTRY_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerInfo$PlayerInfoData", "ClientboundPlayerInfoUpdatePacket$Entry");
-            HEADER_FOOTER_PACKET_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutPlayerListHeaderFooter", "ClientboundTabListPacket");
-            GAME_MODE_CLASS = NMSUtils.getNMSClass("world.level", "WorldSettings$EnumGamemode", "GameType");
+        // Sub Classes
+        PLAYER_INFO_ACTION_SUB_CLASS = NMSUtils.getNMSSubClass("network.protocol.game", true, 0, PLAYER_INFO_UPDATE_CLASS, "EnumPlayerInfoAction", "Action");
+        PLAYER_INFO_ENTRY_SUB_CLASS = NMSUtils.getNMSSubClass("network.protocol.game", false, 1, PLAYER_INFO_UPDATE_CLASS, "PlayerInfoData", "Entry");
+        GAME_MODE_SUB_CLASS = NMSUtils.getNMSSubClass("world.level", true, 0, NMSUtils.getNMSClassOrNull(null, "WorldSettings"), "EnumGamemode", "GameType");
 
-            // Constructors
-            PLAYER_INFO_UPDATE_CONSTRUCTOR = PLAYER_INFO_REMOVE_CLASS != null ? PLAYER_INFO_UPDATE_CLASS.getConstructor(EnumSet.class, List.class) : PLAYER_INFO_UPDATE_CLASS.getConstructor(PLAYER_INFO_ACTION_CLASS, Iterable.class);
-            PLAYER_INFO_REMOVE_CONSTRUCTOR = PLAYER_INFO_REMOVE_CLASS != null ? PLAYER_INFO_REMOVE_CLASS.getConstructors()[0] : null;
-            PLAYER_INFO_ENTRY_CONSTRUCTOR = PLAYER_INFO_ENTRY_CLASS.getConstructors()[0];
-            HEADER_FOOTER_PACKET_CONSTRUCTOR = NMSUtils.streamFindConstructor(HEADER_FOOTER_PACKET_CLASS, constructor -> constructor.getParameterCount() > 0, true, HEADER_FOOTER_PACKET_CLASS.getConstructors()[0]);
+        // Constructors
+        PLAYER_INFO_UPDATE_CONSTRUCTOR = PLAYER_INFO_REMOVE_CLASS != null ? NMSUtils.getConstructorOrNull(PLAYER_INFO_UPDATE_CLASS, EnumSet.class, List.class) : NMSUtils.getConstructorOrNull(PLAYER_INFO_UPDATE_CLASS, PLAYER_INFO_ACTION_SUB_CLASS, Iterable.class);
+        PLAYER_INFO_REMOVE_CONSTRUCTOR = PLAYER_INFO_REMOVE_CLASS != null ? PLAYER_INFO_REMOVE_CLASS.getConstructors()[0] : null;
+        PLAYER_INFO_ENTRY_CONSTRUCTOR = PLAYER_INFO_ENTRY_SUB_CLASS.getConstructors()[0];
+        HEADER_FOOTER_PACKET_CONSTRUCTOR = NMSUtils.streamFindConstructor(HEADER_FOOTER_PACKET_CLASS, constructor -> constructor.getParameterCount() > 0, true, HEADER_FOOTER_PACKET_CLASS.getConstructors()[0]);
 
-            // Enums
-            VALID_GAME_MODE_TYPE = NMSUtils.findEnumConstant(GAME_MODE_CLASS, 1);
+        // Enums
+        VALID_GAME_MODE_TYPE = NMSUtils.findEnumConstant(GAME_MODE_SUB_CLASS, 1);
 
-            // Fields
-            INFO_UPDATE_ACTIONS_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_UPDATE_CLASS, field -> field.getType() == EnumSet.class || field.getType() == PLAYER_INFO_ACTION_CLASS, false, true);
-            INFO_UPDATE_ENTRIES_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_UPDATE_CLASS, field -> field.getType() == List.class, false, true);
-            INFO_ENTRY_UUID_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_ENTRY_CLASS, field -> field.getType() == UUID.class, false, true);
-            HEADER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 0);
-            FOOTER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 1);
+        // Fields
+        INFO_UPDATE_ACTIONS_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_UPDATE_CLASS, field -> field.getType() == EnumSet.class || field.getType() == PLAYER_INFO_ACTION_SUB_CLASS, false, true);
+        INFO_UPDATE_ENTRIES_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_UPDATE_CLASS, field -> field.getType() == List.class, false, true);
+        INFO_ENTRY_UUID_FIELD = NMSUtils.streamFieldsFindFirst(PLAYER_INFO_ENTRY_SUB_CLASS, field -> field.getType() == UUID.class, false, true);
+        HEADER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 0);
+        FOOTER_PACKET_FIELD = NMSUtils.streamFieldsFind(HEADER_FOOTER_PACKET_CLASS, field -> !field.getType().isArray(), false, true, 1);
 
-            // Actions
-            CREATION_ACTIONS = new PlayerInfoAction[]{PlayerInfoAction.ADD_PLAYER, PlayerInfoAction.UPDATE_LATENCY, PlayerInfoAction.UPDATE_DISPLAY_NAME, PlayerInfoAction.UPDATE_LISTED};
+        // Actions
+        CREATION_ACTIONS = new PlayerInfoAction[]{PlayerInfoAction.ADD_PLAYER, PlayerInfoAction.UPDATE_LATENCY, PlayerInfoAction.UPDATE_DISPLAY_NAME, PlayerInfoAction.UPDATE_LISTED};
 
-            // Booleans
-            LISTED_PRESENT = PlayerInfoAction.UPDATE_LISTED.getEnumObject(PLAYER_INFO_ACTION_CLASS) != null;
-            SHOW_HAT_PRESENT = PlayerInfoAction.UPDATE_HAT.getEnumObject(PLAYER_INFO_ACTION_CLASS) != null;
-            LIST_ORDER_PRESENT = PlayerInfoAction.UPDATE_LIST_ORDER.getEnumObject(PLAYER_INFO_ACTION_CLASS) != null;
-
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
+        // Booleans
+        LISTED_PRESENT = PlayerInfoAction.UPDATE_LISTED.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS) != null;
+        SHOW_HAT_PRESENT = PlayerInfoAction.UPDATE_HAT.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS) != null;
+        LIST_ORDER_PRESENT = PlayerInfoAction.UPDATE_LIST_ORDER.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS) != null;
     }
 
     private final Tablist tablist;
@@ -130,10 +126,10 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
         try {
             if (LISTED_PRESENT && module.getSettings().isModernHideRealPlayers() && packet.getClass() == PLAYER_INFO_UPDATE_CLASS) {
                 EnumSet<?> enumSet = (EnumSet<?>) INFO_UPDATE_ACTIONS_FIELD.get(packet);
-                Enum<?> addAction = PlayerInfoAction.ADD_PLAYER.getEnumObject(PLAYER_INFO_ACTION_CLASS);
+                Enum<?> addAction = PlayerInfoAction.ADD_PLAYER.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS);
 
                 if (enumSet.contains(addAction)) {
-                    enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_CLASS, PlayerInfoAction.UPDATE_LISTED.getEnumObject(PLAYER_INFO_ACTION_CLASS));
+                    enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_SUB_CLASS, PlayerInfoAction.UPDATE_LISTED.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS));
 
                     List<?> entries = (List<?>) INFO_UPDATE_ENTRIES_FIELD.get(packet);
                     List<Object> newEntries = new ArrayList<>();
@@ -212,7 +208,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
 
             NMSUtils.sendPacket(player, packet);
 
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -277,9 +273,9 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
                     }
                 }
 
-                EnumSet<?> enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_CLASS, Arrays.stream(actions)
+                EnumSet<?> enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_SUB_CLASS, Arrays.stream(actions)
                         .filter(action -> action != PlayerInfoAction.REMOVE_PLAYER)
-                        .map(action -> action.getEnumObject(PLAYER_INFO_ACTION_CLASS))
+                        .map(action -> action.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS))
                         .toArray(Enum[]::new));
 
                 if (!enumSet.isEmpty()) {
@@ -288,7 +284,7 @@ public class TablistInjector extends SubModule<AzuriteLibs, TablistModule> imple
 
             } else {
                 for (PlayerInfoAction action : actions) {
-                    Enum<?> enumClass = action.getEnumObject(PLAYER_INFO_ACTION_CLASS);
+                    Enum<?> enumClass = action.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS);
 
                     if (enumClass == null)
                         continue;

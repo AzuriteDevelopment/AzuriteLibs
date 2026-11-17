@@ -1,11 +1,8 @@
 package dev.azurite.libs.utils;
 
-import jdk.internal.misc.Unsafe;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 /**
  * Copyright (c) 2026. Keano
@@ -14,33 +11,46 @@ import java.lang.reflect.Field;
  */
 public class NMSAllocator {
 
-    private static final Unsafe UNSAFE;
+    private static Object UNSAFE;
+    private static Method ALLOCATE_METHOD;
 
     static {
         try {
 
-            Field field = Unsafe.class.getDeclaredField("theUnsafe");
-            field.setAccessible(true);
-            UNSAFE = (Unsafe) field.get(null);
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+            Field theUnsafeField = unsafeClass.getDeclaredField("theUnsafe");
+            theUnsafeField.setAccessible(true);
+            UNSAFE = theUnsafeField.get(null);
+            ALLOCATE_METHOD = UNSAFE.getClass().getDeclaredMethod("allocateInstance", Class.class);
 
         } catch (Exception e) {
-            throw new ExceptionInInitializerError(e);
+            UNSAFE = null;
+            ALLOCATE_METHOD = null;
         }
     }
 
     public static Allocator getAllocator(Class<?> clazz) {
-        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        return getAllocator(clazz, true);
+    }
 
+    public static Allocator getAllocator(Class<?> clazz, boolean useUnsafe) {
         try {
-            MethodHandle constructor = lookup.findConstructor(clazz, MethodType.methodType(void.class));
-            return constructor::invoke;
-
-        } catch (NoSuchMethodException | IllegalAccessException e) {
-            return () -> UNSAFE.allocateInstance(clazz);
+            for (Constructor<?> declaredConstructor : clazz.getDeclaredConstructors()) {
+                if (declaredConstructor.getParameterCount() == 0) {
+                    declaredConstructor.setAccessible(true);
+                    return declaredConstructor::newInstance;
+                }
+            }
+            if (useUnsafe && UNSAFE != null) {
+                return () -> ALLOCATE_METHOD.invoke(UNSAFE, clazz);
+            }
+            return null;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public static interface Allocator {
+    public interface Allocator {
 
         Object allocate() throws Throwable;
 

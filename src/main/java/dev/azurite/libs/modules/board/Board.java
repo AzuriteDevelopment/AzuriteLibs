@@ -2,23 +2,19 @@ package dev.azurite.libs.modules.board;
 
 import dev.azurite.libs.AzuriteLibs;
 import dev.azurite.libs.loader.sub.SubModule;
+import dev.azurite.libs.modules.board.enums.ObjectiveAction;
+import dev.azurite.libs.modules.board.enums.ScoreAction;
 import dev.azurite.libs.modules.nametags.scoreboard.AzuriteScoreboard;
 import dev.azurite.libs.modules.versions.utils.VersionUtils;
-import dev.azurite.libs.utils.CC;
 import dev.azurite.libs.utils.NMSAllocator;
 import dev.azurite.libs.utils.NMSUtils;
 import dev.azurite.libs.utils.Triple;
-import net.minecraft.server.v1_8_R3.IScoreboardCriteria;
-import net.minecraft.server.v1_8_R3.PacketPlayOutScoreboardDisplayObjective;
-import net.minecraft.server.v1_8_R3.PacketPlayOutScoreboardObjective;
-import net.minecraft.server.v1_8_R3.PacketPlayOutScoreboardScore;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.*;
 
 /**
  * Copyright (c) 2026. Keano
@@ -33,26 +29,60 @@ public class Board extends SubModule<AzuriteLibs, BoardModule> {
     private static final Class<?> SCOREBOARD_OBJECTIVE_CLASS;
     private static final Class<?> SCOREBOARD_DISPLAY_OBJECTIVE_CLASS;
     private static final Class<?> SCOREBOARD_SCORE_CLASS;
+    private static final Class<?> SCOREBOARD_SERVER_CLASS;
     private static final Class<?> SCOREBOARD_RESET_SCORE_CLASS;
+    private static final Class<?> SCOREBOARD_SCORE_ACTION_CLASS;
+    private static final Class<?> DISPLAY_SLOT_CLASS;
+
+    private static final Enum<?> SCOREBOARD_RENDER_TYPE_ENUM;
+    private static final Enum<?> DISPLAY_SLOT_ENUM;
+
+    private static final Constructor<?> SCOREBOARD_SCORE_CONSTRUCTOR;
+    private static final Constructor<?> SCOREBOARD_RESET_SCORE_CONSTRUCTOR;
 
     private static final NMSAllocator.Allocator SCOREBOARD_OBJECTIVE_ALLOCATOR;
+    private static final NMSAllocator.Allocator SCOREBOARD_DISPLAY_OBJECTIVE_ALLOCATOR;
+
+    private static final Field[] SCOREBOARD_OBJECTIVE_FIELDS;
+    private static final Field[] SCOREBOARD_SCORE_FIELDS;
+    private static final Field[] SCOREBOARD_DISPLAY_OBJECTIVE_FIELDS;
 
     static {
+        // Classes
         SCOREBOARD_OBJECTIVE_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutScoreboardObjective", "ClientboundSetObjectivePacket");
         SCOREBOARD_DISPLAY_OBJECTIVE_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutScoreboardDisplayObjective", "ClientboundSetDisplayObjectivePacket");
         SCOREBOARD_SCORE_CLASS = NMSUtils.getNMSClass("network.protocol.game", "PacketPlayOutScoreboardScore", "ClientboundSetScorePacket");
+        SCOREBOARD_SERVER_CLASS = NMSUtils.getNMSClassOrNull(null, "ScoreboardServer");
         SCOREBOARD_RESET_SCORE_CLASS = NMSUtils.getNMSClassOrNull("network.protocol.game", "ClientboundResetScorePacket");
+        SCOREBOARD_SCORE_ACTION_CLASS = NMSUtils.getNMSSubClass(null, true, 0, SCOREBOARD_SERVER_CLASS != null && SCOREBOARD_SERVER_CLASS.getEnumConstants() != null ? SCOREBOARD_SERVER_CLASS : SCOREBOARD_SCORE_CLASS, "EnumScoreboardAction", "Action");
+        DISPLAY_SLOT_CLASS = NMSUtils.getNMSClassOrNull("world.scores", "DisplaySlot");
 
+        // Enums
+        SCOREBOARD_RENDER_TYPE_ENUM = NMSUtils.findEnumConstant(NMSUtils.getNMSClass("world.scores.criteria", "IScoreboardCriteria$EnumScoreboardHealthDisplay", "ObjectiveCriteria$RenderType"), 0);
+        DISPLAY_SLOT_ENUM = DISPLAY_SLOT_CLASS != null ? NMSUtils.findEnumConstant(DISPLAY_SLOT_CLASS, 1) : null;
+
+        // Constructors
+        Constructor<?> firstConstructor = NMSUtils.getConstructorOrNull(SCOREBOARD_SCORE_CLASS, SCOREBOARD_SCORE_ACTION_CLASS, String.class, String.class, int.class);
+        Constructor<?> secondConstructor = NMSUtils.streamFindConstructor(SCOREBOARD_SCORE_CLASS, constructor -> constructor.getParameterCount() == 5, true, null);
+        SCOREBOARD_SCORE_CONSTRUCTOR = firstConstructor != null ? firstConstructor : secondConstructor != null ? secondConstructor : NMSUtils.getConstructorOrNull(SCOREBOARD_SCORE_CLASS);
+        SCOREBOARD_RESET_SCORE_CONSTRUCTOR = SCOREBOARD_RESET_SCORE_CLASS != null ? NMSUtils.getConstructorOrNull(SCOREBOARD_RESET_SCORE_CLASS, String.class, String.class) : null;
+
+        // Allocator
         SCOREBOARD_OBJECTIVE_ALLOCATOR = NMSAllocator.getAllocator(SCOREBOARD_OBJECTIVE_CLASS);
+        SCOREBOARD_DISPLAY_OBJECTIVE_ALLOCATOR = NMSAllocator.getAllocator(SCOREBOARD_DISPLAY_OBJECTIVE_CLASS);
+
+        // Fields
+        SCOREBOARD_OBJECTIVE_FIELDS = NMSUtils.streamFieldsFindAllType(SCOREBOARD_OBJECTIVE_CLASS, null, false, true, false);
+        SCOREBOARD_SCORE_FIELDS = NMSUtils.streamFieldsFindAllType(SCOREBOARD_SCORE_CLASS, null, false, true, false);
+        SCOREBOARD_DISPLAY_OBJECTIVE_FIELDS = NMSUtils.streamFieldsFindAllType(SCOREBOARD_DISPLAY_OBJECTIVE_CLASS, null, false, true, false);
     }
 
     private final Player player;
     private final Map<Integer, String> scores;
-
     private final AzuriteScoreboard scoreboard;
     private final int version;
 
-    private String title;
+    private String oldTitle;
     private List<String> oldLines;
     private boolean deleted;
 
@@ -63,39 +93,48 @@ public class Board extends SubModule<AzuriteLibs, BoardModule> {
         this.scores = new HashMap<>();
         this.scoreboard = new AzuriteScoreboard();
         this.version = VersionUtils.getProtocolVersion(player);
-        this.title = null;
-        this.oldLines = null;
 
-        this.sendUpdateObjective(module.getAdapter().getTitle(player), 0);
-        this.sendCreateObjectives();
+        this.oldTitle = null;
+        this.oldLines = null;
+        this.deleted = true;
     }
 
     public void update() {
         List<String> lines = module.getAdapter().getLines(player);
         String title = module.getAdapter().getTitle(player);
 
+        // Delete if lines are null or empty
         if (lines == null || lines.isEmpty()) {
             if (!deleted) {
                 // Remove all lines
                 for (int i = 0; i < oldLines.size(); i++) {
-                    this.removeScore(i);
+                    String score = scores.get(i);
+                    this.sendScore(score, i, ScoreAction.REMOVE);
                 }
 
                 // Delete scoreboard
-
-
+                this.sendObjective(title, ObjectiveAction.REMOVE);
                 this.deleted = true;
                 this.oldLines = null;
             }
             return;
         }
 
-        this.sendUpdateObjective(title, 2);
+        // If deleted or did not exist we recreate
+        if (deleted) {
+            this.deleted = false;
+            this.sendObjective(title, ObjectiveAction.CREATE);
+            this.sendDisplayObjective();
+        }
+
+        // Update title
+        this.sendObjective(title, ObjectiveAction.UPDATE);
 
         // Remove any unused lines
         if (oldLines != null && oldLines.size() > lines.size()) {
             for (int i = lines.size(); i < oldLines.size(); i++) {
-                this.removeScore(i);
+                String score = scores.get(i);
+                this.sendScore(score, i, ScoreAction.REMOVE);
             }
         }
 
@@ -103,65 +142,115 @@ public class Board extends SubModule<AzuriteLibs, BoardModule> {
         Collections.reverse(lines);
 
         for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            this.updateScore(i, line);
+            String score = lines.get(i);
+            Triple<String, String, String> formatted = getScoreFormat(score, i);
+
+            String prefix = formatted.getLeft();
+            String entry = formatted.getMiddle();
+            String suffix = formatted.getRight();
+
+            String oldScore = scores.get(i);
+            String newScore = entry != null ? entry : COLORS[i].toString();
+
+            // If the old score existed, and it's a custom score or different we remove to change/send again
+            if (oldScore == null || !oldScore.equals(newScore)) {
+                if (oldScore != null) {
+                    scoreboard.removeFromTeam(player, oldScore, oldScore);
+                    this.sendScore(oldScore, i, ScoreAction.REMOVE);
+                }
+
+                scores.put(i, newScore);
+            }
+
+            // Send update and prefix/suffix
+            this.sendScore(newScore, i, ScoreAction.CHANGE);
+            scoreboard.addAndCreateTeam(player, newScore, newScore, prefix, suffix);
         }
 
         this.deleted = false;
         this.oldLines = lines;
     }
 
-    private void sendUpdateObjective(String newTitle, int mode) {
-        if (title != null && title.equals(newTitle)) {
-            return;
-        }
-
-        newTitle = CC.t(newTitle);
-        this.title = newTitle;
-
-        PacketPlayOutScoreboardObjective objective = new PacketPlayOutScoreboardObjective(OBJECTIVE_NAME, newTitle, IScoreboardCriteria.EnumScoreboardHealthDisplay.INTEGER, mode);
-        NMSUtils.sendPacket(player, objective);
-    }
-
-    private void sendCreateObjectives() {
-        PacketPlayOutScoreboardDisplayObjective displayObjective = new PacketPlayOutScoreboardDisplayObjective(1, OBJECTIVE_NAME);
-        NMSUtils.sendPacket(player, displayObjective);
-    }
-
-    private void updateScore(int index, String line) {
-        Triple<String, String, String> formatted = getScoreFormat(line, index);
-
-        String prefix = formatted.getLeft();
-        String entry = formatted.getMiddle();
-        String suffix = formatted.getRight();
-
-        String oldScore = scores.get(index);
-        String newScore = entry != null ? entry : COLORS[index].toString();
-
-        if (oldScore == null || !oldScore.equals(newScore)) {
-            if (oldScore != null) {
-                scoreboard.removeFromTeam(player, oldScore, oldScore);
-                this.removeScore(index, oldScore);
+    private void sendObjective(String title, ObjectiveAction action) {
+        try {
+            if (oldTitle != null && oldTitle.equals(title) && action == ObjectiveAction.UPDATE) {
+                return;
             }
 
-            scores.put(index, newScore);
-        }
+            Object packet = SCOREBOARD_OBJECTIVE_ALLOCATOR.allocate();
+            int actionField = SCOREBOARD_OBJECTIVE_FIELDS.length == 5 ? 4 : 3;
 
-        PacketPlayOutScoreboardScore scoreboardScore = new PacketPlayOutScoreboardScore(OBJECTIVE_NAME, newScore, PacketPlayOutScoreboardScore.EnumScoreboardAction.CHANGE, index);
-        NMSUtils.sendPacket(player, scoreboardScore);
-        scoreboard.addAndCreateTeam(player, newScore, newScore, prefix, suffix);
+            NMSUtils.setField(packet, SCOREBOARD_OBJECTIVE_FIELDS[0], OBJECTIVE_NAME);
+            NMSUtils.setField(packet, SCOREBOARD_OBJECTIVE_FIELDS[actionField], action.getId());
+
+            if (action == ObjectiveAction.CREATE || action == ObjectiveAction.UPDATE) {
+                NMSUtils.setField(packet, SCOREBOARD_OBJECTIVE_FIELDS[1], title);
+                NMSUtils.setField(packet, SCOREBOARD_OBJECTIVE_FIELDS[2], SCOREBOARD_RENDER_TYPE_ENUM);
+
+                if (actionField == 4) {
+                    NMSUtils.setField(packet, SCOREBOARD_OBJECTIVE_FIELDS[3], null);
+                }
+            }
+
+            this.oldTitle = title;
+            NMSUtils.sendPacket(player, packet);
+
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private void removeScore(int index) {
-        this.removeScore(index, scores.get(index));
+    private void sendDisplayObjective() {
+        try {
+
+            Object packet = SCOREBOARD_DISPLAY_OBJECTIVE_ALLOCATOR.allocate();
+
+            SCOREBOARD_DISPLAY_OBJECTIVE_FIELDS[0].set(packet, DISPLAY_SLOT_ENUM != null ? DISPLAY_SLOT_ENUM : 1);
+            SCOREBOARD_DISPLAY_OBJECTIVE_FIELDS[1].set(packet, OBJECTIVE_NAME);
+
+            NMSUtils.sendPacket(player, packet);
+
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private void removeScore(int index, String score) {
-        if (score == null) {
-            throw new NullPointerException("Trying to send remove score packet for line that does not exist: " + index);
+    private void sendScore(String score, int index, ScoreAction action) {
+        try {
+            // Use reset score packet for versions that have it
+            if (SCOREBOARD_RESET_SCORE_CLASS != null && action == ScoreAction.REMOVE) {
+                Object packet = SCOREBOARD_RESET_SCORE_CONSTRUCTOR.newInstance(score, OBJECTIVE_NAME);
+                NMSUtils.sendPacket(player, packet);
+                return;
+            }
+
+            // Different constructors throughout the versions
+            int count = SCOREBOARD_SCORE_CONSTRUCTOR.getParameterCount();
+            Object packet;
+
+            if (count == 0) {
+                Object actionEnum = NMSUtils.findEnumConstant(SCOREBOARD_SCORE_ACTION_CLASS, action.getId());
+                packet = SCOREBOARD_SCORE_CONSTRUCTOR.newInstance();
+
+                NMSUtils.setField(packet, SCOREBOARD_SCORE_FIELDS[0], score);
+                NMSUtils.setField(packet, SCOREBOARD_SCORE_FIELDS[1], OBJECTIVE_NAME);
+                NMSUtils.setField(packet, SCOREBOARD_SCORE_FIELDS[2], index);
+                NMSUtils.setField(packet, SCOREBOARD_SCORE_FIELDS[3], actionEnum);
+
+            } else if (count == 4) {
+                Object actionEnum = NMSUtils.findEnumConstant(SCOREBOARD_SCORE_ACTION_CLASS, action.getId());
+                packet = SCOREBOARD_SCORE_CONSTRUCTOR.newInstance(actionEnum, OBJECTIVE_NAME, score, index);
+
+            } else {
+                Object component = SCOREBOARD_SCORE_CONSTRUCTOR.getParameterTypes()[3] == Optional.class ? Optional.empty() : null;
+                packet = SCOREBOARD_SCORE_CONSTRUCTOR.newInstance(score, OBJECTIVE_NAME, index, component, component);
+            }
+
+            NMSUtils.sendPacket(player, packet);
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-        PacketPlayOutScoreboardScore scoreboardScore = new PacketPlayOutScoreboardScore(OBJECTIVE_NAME, score, PacketPlayOutScoreboardScore.EnumScoreboardAction.REMOVE, index);
-        NMSUtils.sendPacket(player, scoreboardScore);
     }
 
     private Triple<String, String, String> getScoreFormat(String line, int index) {
@@ -191,7 +280,7 @@ public class Board extends SubModule<AzuriteLibs, BoardModule> {
             prefix = cutStringIfOverLimit(maxLength, prefix);
             suffix = cutStringIfOverLimit(maxLength, suffix);
 
-            // Use entry name to allow for 48 chars
+            // Use entry name to allow for 48 chars on 1.8 and below
         } else {
             prefix = line.substring(0, maxLength);
             suffix = line.substring(maxLength * 2);
@@ -200,8 +289,7 @@ public class Board extends SubModule<AzuriteLibs, BoardModule> {
             // If a duplicate is present we add a random color at the start
             for (Map.Entry<Integer, String> scoreEntry : scores.entrySet()) {
                 if (scoreEntry.getKey() != index && scoreEntry.getValue().equals(entry)) {
-                    entry = cutStringIfOverLimit(maxLength - 2, entry); // Cut to - 2 so we can accommodate for the colors added
-                    entry = entry + COLORS[index];
+                    entry = COLORS[index] + getLastColorsIfPresent(prefix) + entry;
                 }
             }
 

@@ -5,14 +5,10 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import dev.azurite.libs.modules.tablist.skin.TablistSkin;
-import jdk.internal.misc.Unsafe;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -111,6 +107,12 @@ public class NMSUtils {
 
             } else if (type == Collection.class) {
                 field.set(packet, (Collection<?>) value);
+
+            } else if (type == Optional.class) {
+                field.set(packet, value == null ? Optional.empty() : Optional.of(value));
+
+            } else {
+                field.set(packet, value);
             }
 
         } catch (Exception e) {
@@ -241,6 +243,38 @@ public class NMSUtils {
         return clazz;
     }
 
+    public static Class<?> getNMSSubClass(String modernPath, boolean isEnum, int fallbackIndex, Class<?> parentClass, String... names) {
+        Class<?> clazz = getNMSClassOrNull(modernPath, names);
+
+        // Find it normally, it's not a subclass
+        if (clazz != null) {
+            return clazz;
+        }
+
+        // Find the subclasses of the parent class and checks to ensure it's the one we need
+        if (parentClass != null) {
+            for (int i = 0; i < parentClass.getDeclaredClasses().length; i++) {
+                Class<?> subClass = parentClass.getDeclaredClasses()[i];
+
+                if (!isEnum && subClass.isEnum()) {
+                    continue;
+                }
+
+                for (String name : names) {
+                    if (subClass.getSimpleName().equals(name)) {
+                        clazz = subClass;
+                        break;
+                    }
+                }
+
+                if (clazz == null && i == fallbackIndex) {
+                    clazz = subClass;
+                }
+            }
+        }
+        return clazz;
+    }
+
     public static Class<?> getNMSClassOrNull(String modernPath, String... names) {
         for (String name : names) {
             Class<?> clazz = findClass(NMS_CLASS_PATH + (MODERN_PACKAGING && modernPath != null ? "." + modernPath + "." : ".") + name);
@@ -281,20 +315,32 @@ public class NMSUtils {
         return null;
     }
 
-    public static Field[] streamFieldsFindAllType(Class<?> clazz, Class<?> type, boolean inheritedFields, boolean accessible) {
-        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields()).filter(field -> field.getType() == type).peek(field -> field.setAccessible(accessible)).toArray(Field[]::new);
+    public static Field[] streamFieldsFindAllType(Class<?> clazz, Class<?> type, boolean inheritedFields, boolean accessible, boolean staticFields) {
+        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields())
+                .filter(field -> type == null || field.getType() == type)
+                .filter(field -> !staticFields && !Modifier.isStatic(field.getModifiers()))
+                .peek(field -> field.setAccessible(accessible)).toArray(Field[]::new);
     }
 
     public static Field streamFieldsFind(Class<?> clazz, Predicate<Field> predicate, boolean inheritedFields, boolean accessible, int index) {
-        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields()).filter(predicate).peek(field -> field.setAccessible(accessible)).toArray(Field[]::new)[index];
+        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields())
+                .filter(predicate)
+                .peek(field -> field.setAccessible(accessible)).toArray(Field[]::new)[index];
     }
 
     public static Field streamFieldsFindFirst(Class<?> clazz, Predicate<Field> predicate, boolean inheritedFields, boolean accessible) {
-        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields()).filter(predicate).peek(field -> field.setAccessible(accessible)).findFirst().orElse(null);
+        return Arrays.stream(inheritedFields ? findAllInheritedFields(clazz) : clazz.getDeclaredFields())
+                .filter(predicate).peek(field -> field.setAccessible(accessible))
+                .findFirst()
+                .orElse(null);
     }
 
     public static Method streamMethodsFindFirst(Class<?> clazz, Predicate<Method> predicate, boolean inheritedMethods, boolean accessible) {
-        return Arrays.stream(inheritedMethods ? findAllInheritedMethods(clazz) : clazz.getDeclaredMethods()).filter(predicate).peek(method -> method.setAccessible(accessible)).findFirst().orElse(null);
+        return Arrays.stream(inheritedMethods ? findAllInheritedMethods(clazz) : clazz.getDeclaredMethods())
+                .filter(predicate)
+                .peek(method -> method.setAccessible(accessible))
+                .findFirst()
+                .orElse(null);
     }
 
     public static Constructor<?> streamFindConstructor(Class<?> clazz, Predicate<Constructor<?>> predicate, boolean accessible, Constructor<?> defaultConstructor) {

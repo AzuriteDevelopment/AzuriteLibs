@@ -58,6 +58,10 @@ public class AzuriteLibs extends ModuleLoader {
 
                     @Override
                     public List<String> getLines(Player player) {
+                        if (player.isFlying()) {
+                            return null;
+                        }
+
                         List<String> lines = new ArrayList<>();
 
                         lines.add("line1");
