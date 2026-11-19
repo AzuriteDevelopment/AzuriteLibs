@@ -1,4 +1,4 @@
-package dev.azurite.libs.utils;
+package dev.azurite.libs.utils.threads;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -9,12 +9,12 @@ import java.util.concurrent.ThreadFactory;
  * Use or redistribution of source or file is
  * only permitted if given explicit permission.
  */
-public class NamedThreadFactory implements ThreadFactory {
+public class AzuriteThreadFactory implements ThreadFactory {
 
     private final String name;
     private int counter;
 
-    public NamedThreadFactory(String name) {
+    public AzuriteThreadFactory(String name) {
         this.name = name;
         this.counter = 0;
     }

@@ -19,4 +19,10 @@ public class SubModule<L extends ModuleLoader, M extends Module<L>> implements C
         this.module = module;
         this.loader = module.getLoader();
     }
+
+    public void enable() {
+    }
+
+    public void disable() {
+    }
 }

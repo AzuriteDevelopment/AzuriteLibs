@@ -22,10 +22,4 @@ public class LibLoader {
     public void registerListener(Listener listener) {
         Bukkit.getPluginManager().registerEvents(listener, plugin);
     }
-
-    public void registerListeners(Listener... listeners) {
-        for (Listener listener : listeners) {
-            Bukkit.getPluginManager().registerEvents(listener, plugin);
-        }
-    }
 }

@@ -2,7 +2,7 @@ package dev.azurite.libs.framework.lib.ticking;
 
 import dev.azurite.libs.framework.lib.Lib;
 import dev.azurite.libs.framework.lib.LibLoader;
-import dev.azurite.libs.utils.NamedThreadFactory;
+import dev.azurite.libs.utils.threads.AzuriteThreadFactory;
 import lombok.Getter;
 
 import java.util.Map;
@@ -29,7 +29,7 @@ public abstract class TickingLib<L extends LibLoader, C, S, A> extends Lib<L> {
     public TickingLib(L loader, String threadName) {
         super(loader);
         this.cachedData = new ConcurrentHashMap<>();
-        this.service = Executors.newScheduledThreadPool(1, new NamedThreadFactory(threadName));
+        this.service = Executors.newScheduledThreadPool(1, new AzuriteThreadFactory(threadName));
         this.serviceSchedule = null;
         this.settings = null;
         this.adapter = null;
