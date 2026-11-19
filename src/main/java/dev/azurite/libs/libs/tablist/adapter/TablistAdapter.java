@@ -1,0 +1,21 @@
+package dev.azurite.libs.libs.tablist.adapter;
+
+import dev.azurite.libs.libs.tablist.Tablist;
+import org.bukkit.entity.Player;
+
+/**
+ * Copyright (c) 2026. Keano
+ * Use or redistribution of source or file is
+ * only permitted if given explicit permission.
+ */
+public interface TablistAdapter {
+
+    String[] getHeader(Player player);
+
+    String[] getFooter(Player player);
+
+    int getColumns(Player player, int version);
+
+    void updateEntries(Player player, Tablist tablist);
+
+}

@@ -1,0 +1,145 @@
+package dev.azurite.libs.libs.tablist;
+
+import com.google.common.collect.Table;
+import dev.azurite.libs.AzuriteLibs;
+import dev.azurite.libs.framework.lib.sub.SubLib;
+import dev.azurite.libs.libs.nametags.enums.TeamAction;
+import dev.azurite.libs.libs.nametags.scoreboard.AzuriteTeam;
+import dev.azurite.libs.libs.tablist.adapter.TablistAdapter;
+import dev.azurite.libs.libs.tablist.entry.OldEntry;
+import dev.azurite.libs.libs.tablist.entry.TablistEntry;
+import dev.azurite.libs.libs.tablist.injector.TablistInjector;
+import dev.azurite.libs.libs.tablist.skin.Skins;
+import dev.azurite.libs.libs.tablist.skin.TablistSkin;
+import dev.azurite.libs.utils.CC;
+import lombok.Getter;
+import lombok.Setter;
+import org.bukkit.entity.Player;
+
+import java.util.Arrays;
+import java.util.Map;
+
+/**
+ * Copyright (c) 2026. Keano
+ * Use or redistribution of source or file is
+ * only permitted if given explicit permission.
+ */
+@Getter
+@Setter
+public class Tablist extends SubLib<AzuriteLibs, TablistLib> {
+
+    private final Player player;
+    private final TablistInjector injector;
+
+    private Table<Integer, Integer, TablistEntry> entries;
+
+    private String[] currentHeader;
+    private String[] currentFooter;
+
+    private volatile boolean initialized;
+    private int maxColumns;
+
+    public Tablist(TablistLib module, Player player) {
+        super(module);
+        this.player = player;
+        this.injector = new TablistInjector(this);
+        this.entries = null;
+        this.currentHeader = null;
+        this.currentFooter = null;
+        this.initialized = false;
+        this.maxColumns = 4;
+    }
+
+    public void setEntry(int col, int row, String display) {
+        this.setEntry(col, row, display, -1);
+    }
+
+    public void setEntry(int col, int row, String display, int ping) {
+        this.setEntry(col, row, display, ping, Skins.GRAY);
+    }
+
+    public void setEntry(int col, int row, String display, TablistSkin skin) {
+        this.setEntry(col, row, display, -1, skin);
+    }
+
+    public void setEntry(int col, int row, String display, int ping, TablistSkin skin) {
+        TablistEntry entry = entries.get(col, row);
+        display = CC.t(display);
+
+        if (entry == null) {
+            entry = new TablistEntry(display, skin, col, row, ping);
+            entries.put(col, row, entry);
+
+        } else {
+            entry.setDisplay(display);
+            entry.setPing(ping);
+            entry.setSkin(skin);
+        }
+    }
+
+    public void update() {
+        TablistAdapter adapter = module.getAdapter();
+        int version = injector.getVersion();
+        int validColumns = adapter.getColumns(player, version) - 1;
+
+        adapter.updateEntries(player, this);
+
+        if (maxColumns == 4) {
+            String[] header = adapter.getHeader(player);
+            String[] footer = adapter.getFooter(player);
+
+            if (!Arrays.equals(currentHeader, header) || !Arrays.equals(currentFooter, footer)) {
+                this.currentHeader = header;
+                this.currentFooter = footer;
+                injector.sendHeaderFooter(player, String.join("\n", CC.t(header)), String.join("\n", CC.t(footer)));
+            }
+        }
+
+        for (int row = 0; row < 20; row++) {
+            for (int col = 0; col < maxColumns; col++) {
+                TablistEntry entry = entries.get(col, row);
+
+                // Don't allow dynamic tablist on 1.7 as it'll break client order
+                if (version != 5) {
+                    if (col > validColumns) {
+                        if (entry.isRemoved()) {
+                            continue;
+                        }
+
+                        injector.sendTablistRemove(player, entry);
+                        entry.setRemoved(true);
+                        entry.setOldEntry(null);
+                        continue;
+                    }
+
+                    if (entry.isRemoved()) {
+                        injector.sendTablistAdd(player, entry);
+                        entry.setRemoved(false);
+                    }
+                }
+
+                injector.sendTablistUpdate(player, entry);
+                entry.setOldEntry(new OldEntry(entry));
+            }
+        }
+    }
+
+    public void delete() {
+        // Clear teams
+        Map<String, AzuriteTeam> teams = injector.getScoreboard().getTeams();
+
+        for (AzuriteTeam team : teams.values()) {
+            team.sendUpdate(player, TeamAction.REMOVE_TEAM);
+        }
+
+        teams.clear();
+
+        // Clear entries
+        for (int row = 0; row < 20; row++) {
+            for (int col = 0; col < maxColumns; col++) {
+                TablistEntry entry = entries.get(col, row);
+                injector.sendTablistRemove(player, entry);
+            }
+        }
+    }
+}

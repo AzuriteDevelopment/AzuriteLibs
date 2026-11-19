@@ -1,8 +1,5 @@
 package plugin.listener;
 
-import dev.azurite.libs.AzuriteLibs;
-import dev.azurite.libs.modules.tablist.Tablist;
-import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;

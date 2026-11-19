@@ -1,22 +1,22 @@
 package dev.azurite.libs;
 
-import dev.azurite.libs.loader.ModuleLoader;
-import dev.azurite.libs.modules.board.BoardModule;
-import dev.azurite.libs.modules.board.adapter.BoardAdapter;
-import dev.azurite.libs.modules.board.settings.BoardSettings;
-import dev.azurite.libs.modules.commands.CommandModule;
-import dev.azurite.libs.modules.nametags.NametagModule;
-import dev.azurite.libs.modules.nametags.adapter.NametagAdapter;
-import dev.azurite.libs.modules.nametags.enums.NametagColor;
-import dev.azurite.libs.modules.nametags.settings.NametagSettings;
-import dev.azurite.libs.modules.nametags.update.NametagUpdate;
-import dev.azurite.libs.modules.netty.NettyModule;
-import dev.azurite.libs.modules.tablist.Tablist;
-import dev.azurite.libs.modules.tablist.TablistModule;
-import dev.azurite.libs.modules.tablist.adapter.TablistAdapter;
-import dev.azurite.libs.modules.tablist.settings.TablistSettings;
-import dev.azurite.libs.modules.tablist.skin.Skins;
-import dev.azurite.libs.modules.tablist.skin.TablistSkin;
+import dev.azurite.libs.framework.lib.LibLoader;
+import dev.azurite.libs.libs.board.BoardLib;
+import dev.azurite.libs.libs.board.adapter.BoardAdapter;
+import dev.azurite.libs.libs.board.settings.BoardSettings;
+import dev.azurite.libs.libs.commands.CommandLib;
+import dev.azurite.libs.libs.nametags.NametagLib;
+import dev.azurite.libs.libs.nametags.adapter.NametagAdapter;
+import dev.azurite.libs.libs.nametags.enums.NametagColor;
+import dev.azurite.libs.libs.nametags.settings.NametagSettings;
+import dev.azurite.libs.libs.nametags.update.NametagUpdate;
+import dev.azurite.libs.libs.netty.NettyLib;
+import dev.azurite.libs.libs.tablist.Tablist;
+import dev.azurite.libs.libs.tablist.TablistLib;
+import dev.azurite.libs.libs.tablist.adapter.TablistAdapter;
+import dev.azurite.libs.libs.tablist.settings.TablistSettings;
+import dev.azurite.libs.libs.tablist.skin.Skins;
+import dev.azurite.libs.libs.tablist.skin.TablistSkin;
 import lombok.Getter;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -32,21 +32,21 @@ import java.util.concurrent.ThreadLocalRandom;
  * only permitted if given explicit permission.
  */
 @Getter
-public class AzuriteLibs extends ModuleLoader {
+public class AzuriteLibs extends LibLoader {
 
-    private final NettyModule nettyModule;
-    private final TablistModule tablistModule;
-    private final NametagModule nametagModule;
-    private final BoardModule boardModule;
-    private final CommandModule commandModule;
+    private final NettyLib nettyLib;
+    private final TablistLib tablistModule;
+    private final NametagLib nametagModule;
+    private final BoardLib boardModule;
+    private final CommandLib commandLib;
 
     public AzuriteLibs(JavaPlugin plugin) {
         super(plugin);
-        this.nettyModule = new NettyModule(this);
-        this.tablistModule = new TablistModule(this);
-        this.nametagModule = new NametagModule(this);
-        this.boardModule = new BoardModule(this);
-        this.commandModule = new CommandModule(this);
+        this.nettyLib = new NettyLib(this);
+        this.tablistModule = new TablistLib(this);
+        this.nametagModule = new NametagLib(this);
+        this.boardModule = new BoardLib(this);
+        this.commandLib = new CommandLib(this);
 
         boardModule.enable(BoardSettings.builder()
                 .tickTime(200L)
