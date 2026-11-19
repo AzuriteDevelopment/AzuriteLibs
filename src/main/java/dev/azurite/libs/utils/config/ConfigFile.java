@@ -1,6 +1,7 @@
 package dev.azurite.libs.utils.config;
 
 import lombok.Getter;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.simpleyaml.configuration.ConfigurationSection;
 
 import java.io.File;
@@ -22,40 +23,21 @@ public abstract class ConfigFile {
         this(new File(name), header);
     }
 
+    public ConfigFile(JavaPlugin javaPlugin, String name, String header) {
+        this(new File(javaPlugin.getDataFolder(), name), header);
+    }
+
     public ConfigFile(File file, String header) {
         this.yamlFile = new AzuriteYamlFile(file);
         this.header = header;
+    }
 
+    public abstract void loadDefaults(AzuriteYamlFile yamlFile);
+
+    public void load() {
         this.createFile();
         this.loadDefaults(yamlFile);
         this.save();
-    }
-
-    private void createFile() {
-        try {
-            String commentPrefix = "#        ♦ ";
-            String commentSuffix = " ♦        #";
-            String centered = getCenteredLine(header, commentPrefix, commentSuffix);
-
-            yamlFile.createOrLoadWithComments();
-            yamlFile.setHeader(header);
-            yamlFile.options().headerFormatter()
-                    .commentPrefix(commentPrefix).commentSuffix(commentSuffix)
-                    .prefixFirst(centered)
-                    .suffixLast(centered);
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private String getCenteredLine(String header, String commentPrefix, String commentSuffix) {
-        int size = header.length() + commentPrefix.length() + commentSuffix.length();
-        StringBuilder sb = new StringBuilder("#");
-        for (int i = 2; i <= size - 1; i++) {
-            sb.append("-");
-        }
-        return sb.append("#").toString();
     }
 
     public void save() {
@@ -122,6 +104,30 @@ public abstract class ConfigFile {
         return yamlFile.getFloatList(key);
     }
 
-    public abstract void loadDefaults(AzuriteYamlFile yamlFile);
+    private void createFile() {
+        try {
+            String commentPrefix = "#        ♦ ";
+            String commentSuffix = " ♦        #";
+            String centered = getCenteredLine(header, commentPrefix, commentSuffix);
 
+            yamlFile.createOrLoadWithComments();
+            yamlFile.setHeader(header);
+            yamlFile.options().headerFormatter()
+                    .commentPrefix(commentPrefix).commentSuffix(commentSuffix)
+                    .prefixFirst(centered)
+                    .suffixLast(centered);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String getCenteredLine(String header, String commentPrefix, String commentSuffix) {
+        int size = header.length() + commentPrefix.length() + commentSuffix.length();
+        StringBuilder sb = new StringBuilder("#");
+        for (int i = 2; i <= size - 1; i++) {
+            sb.append("-");
+        }
+        return sb.append("#").toString();
+    }
 }

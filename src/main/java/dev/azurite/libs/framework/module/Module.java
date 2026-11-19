@@ -32,15 +32,11 @@ public class Module<L extends ModuleLoader> {
         subModules.add(module);
     }
 
-    public void unregisterSubModule(SubModule<?, ?> module) {
-        subModules.remove(module);
-    }
-
-    public void enableSubModules() {
+    public void loadSubModules() {
         this.subModules.forEach(SubModule::enable);
     }
 
-    public void disableSubModules() {
+    public void unloadSubModules() {
         this.subModules.forEach(SubModule::disable);
     }
 

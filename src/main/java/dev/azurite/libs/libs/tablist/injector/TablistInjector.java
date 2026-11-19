@@ -6,6 +6,7 @@ import com.mojang.authlib.GameProfile;
 import dev.azurite.libs.libs.nametags.scoreboard.AzuriteScoreboard;
 import dev.azurite.libs.libs.netty.listener.NettyListener;
 import dev.azurite.libs.libs.tablist.Tablist;
+import dev.azurite.libs.libs.tablist.adapter.TablistAdapter;
 import dev.azurite.libs.libs.tablist.entry.OldEntry;
 import dev.azurite.libs.libs.tablist.entry.TablistEntry;
 import dev.azurite.libs.libs.tablist.enums.PlayerInfoAction;
@@ -224,12 +225,21 @@ public class TablistInjector implements NettyListener {
     }
 
     private void createAndUpdateEntries(Player player, Table<Integer, Integer, TablistEntry> entries, List<TablistEntry> sendingOrder, int maxColumns) {
-        tablist.getModule().getAdapter().updateEntries(player, tablist);
+        TablistAdapter adapter = tablist.getModule().getAdapter();
+        int validColumns = adapter.getColumns(player, version) - 1;
+
+        adapter.updateEntries(player, tablist);
 
         for (int row = 0; row < 20; row++) {
             for (int col = 0; col < maxColumns; col++) {
                 TablistEntry entry = entries.get(row, col);
                 UUID uuid = UUID.randomUUID();
+
+                if (version != 5) {
+                    if (col > validColumns) {
+                        continue;
+                    }
+                }
 
                 if (entry == null) {
                     entry = new TablistEntry("", Skins.GRAY, col, row, -1);
@@ -255,26 +265,24 @@ public class TablistInjector implements NettyListener {
             boolean version1_7 = version == 5;
 
             if (PLAYER_INFO_UPDATE_CONSTRUCTOR.getParameterTypes()[0] == EnumSet.class) {
-                for (PlayerInfoAction action : actions) {
-                    if (action == PlayerInfoAction.ADD_PLAYER) {
-                        this.handleTeamPackets(player, entries, false);
-                    }
+                List<PlayerInfoAction> list = Arrays.asList(actions);
 
-                    if (action == PlayerInfoAction.REMOVE_PLAYER) {
-                        NMSUtils.sendPacket(player, PLAYER_INFO_REMOVE_CONSTRUCTOR.newInstance(entries
-                                .stream()
-                                .map(TablistEntry::getUuid)
-                                .collect(Collectors.toList())));
-                        return;
-                    }
+                if (list.remove(PlayerInfoAction.REMOVE_PLAYER)) {
+                    NMSUtils.sendPacket(player, PLAYER_INFO_REMOVE_CONSTRUCTOR.newInstance(entries
+                            .stream()
+                            .map(TablistEntry::getUuid)
+                            .collect(Collectors.toList())));
                 }
 
-                EnumSet<?> enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_SUB_CLASS, Arrays.stream(actions)
-                        .filter(action -> action != PlayerInfoAction.REMOVE_PLAYER)
-                        .map(action -> action.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS))
-                        .toArray(Enum[]::new));
+                if (!list.isEmpty()) {
+                    if (list.contains(PlayerInfoAction.ADD_PLAYER)) {
+                        this.handleTeamPackets(player, entries, true);
+                    }
 
-                if (!enumSet.isEmpty()) {
+                    EnumSet<?> enumSet = NMSUtils.getEnumSet(PLAYER_INFO_ACTION_SUB_CLASS, list.stream()
+                            .map(action -> action.getEnumObject(PLAYER_INFO_ACTION_SUB_CLASS))
+                            .toArray(Enum[]::new));
+
                     NMSUtils.sendPacket(player, PLAYER_INFO_UPDATE_CONSTRUCTOR.newInstance(enumSet, getInfoPacketEntries(entries)));
                 }
 
