@@ -1,4 +1,4 @@
-package dev.azurite.libs.utils.files;
+package dev.azurite.libs.utils.yaml;
 
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;

@@ -1,4 +1,4 @@
-package dev.azurite.libs.utils.files;
+package dev.azurite.libs.utils.json;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

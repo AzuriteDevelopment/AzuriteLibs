@@ -1,8 +1,11 @@
 package dev.azurite.libs.framework.module;
 
 import dev.azurite.libs.framework.module.sub.SubModule;
+import dev.azurite.libs.libs.commands.annotations.AzuriteCommand;
 import lombok.Getter;
+import org.bukkit.event.EventHandler;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,14 +25,38 @@ public class Module<L extends ModuleLoader> {
         this.subModules = new ArrayList<>();
     }
 
-    public void registerSubModules(SubModule<?, ?>... modules) {
-        for (SubModule<?, ?> module : modules) {
-            this.registerSubModule(module);
+    private void checkSubModule(SubModule<?, ?> subModule) {
+        boolean listener = false;
+        boolean command = false;
+
+        for (Method method : subModule.getClass().getMethods()) {
+            if (method.isAnnotationPresent(EventHandler.class)) {
+                listener = true;
+            }
+
+            if (method.isAnnotationPresent(AzuriteCommand.class)) {
+                command = true;
+            }
+        }
+
+        if (listener) {
+            loader.getServer().getPluginManager().registerEvents(subModule, loader);
+        }
+
+        if (command) {
+            loader.getAzuriteLibs().getCommandLib().registerCommand(loader.getName(), subModule);
         }
     }
 
-    public void registerSubModule(SubModule<?, ?> module) {
-        subModules.add(module);
+    public void registerSubModules(SubModule<?, ?>... subModules) {
+        for (SubModule<?, ?> subModule : subModules) {
+            this.registerSubModule(subModule);
+        }
+    }
+
+    public void registerSubModule(SubModule<?, ?> subModule) {
+        subModules.add(subModule);
+        this.checkSubModule(subModule);
     }
 
     public void loadSubModules() {
