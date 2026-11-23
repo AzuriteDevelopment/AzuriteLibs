@@ -1,4 +1,4 @@
-package dev.azurite.libs.utils.config;
+package dev.azurite.libs.utils.files;
 
 import org.simpleyaml.configuration.comments.CommentType;
 import org.simpleyaml.configuration.file.YamlFile;

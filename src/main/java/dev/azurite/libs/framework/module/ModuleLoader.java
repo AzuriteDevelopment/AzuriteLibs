@@ -1,7 +1,7 @@
 package dev.azurite.libs.framework.module;
 
 import dev.azurite.libs.AzuriteLibs;
-import dev.azurite.libs.utils.config.ConfigFile;
+import dev.azurite.libs.utils.files.ConfigFile;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
