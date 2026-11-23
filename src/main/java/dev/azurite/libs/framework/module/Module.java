@@ -37,6 +37,10 @@ public class Module<L extends ModuleLoader> {
             if (method.isAnnotationPresent(AzuriteCommand.class)) {
                 command = true;
             }
+
+            if (listener && command) {
+                break;
+            }
         }
 
         if (listener) {
