@@ -54,13 +54,9 @@ public class Module<L extends ModuleLoader> {
 
     public void registerSubModules(SubModule<?, ?>... subModules) {
         for (SubModule<?, ?> subModule : subModules) {
-            this.registerSubModule(subModule);
+            this.subModules.add(subModule);
+            this.checkSubModule(subModule);
         }
-    }
-
-    public void registerSubModule(SubModule<?, ?> subModule) {
-        subModules.add(subModule);
-        this.checkSubModule(subModule);
     }
 
     public void loadSubModules() {

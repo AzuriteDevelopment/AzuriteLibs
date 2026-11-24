@@ -6,6 +6,7 @@ import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -27,23 +28,11 @@ public abstract class ModuleLoader extends JavaPlugin {
     }
 
     public void registerConfigs(ConfigFile... configs) {
-        for (ConfigFile config : configs) {
-            this.registerConfig(config);
-        }
-    }
-
-    public void registerConfig(ConfigFile config) {
-        configs.add(config);
+        this.configs.addAll(Arrays.asList(configs));
     }
 
     public void registerModules(Module<?>... modules) {
-        for (Module<?> module : modules) {
-            this.registerModule(module);
-        }
-    }
-
-    public void registerModule(Module<?> module) {
-        modules.add(module);
+        this.modules.addAll(Arrays.asList(modules));
     }
 
     public void loadConfigs() {
